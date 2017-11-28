@@ -5,7 +5,6 @@ import android.util.Log;
 import android.widget.ImageView;
 
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.logging.Logger;
 
 /**
  * The GameManager class which manages the game state.
@@ -54,24 +53,20 @@ public class GameManager implements Runnable {
         int msPerFrame = 1000 / targetFrameRate;
         long currentTime = System.currentTimeMillis();
         long targetTime = currentTime + msPerFrame;
-
         boolean isBlockFalling;
-        ImageView activeBlockImage;
+        ImageView activeImage;
         PlanetsEnum nextPlanet = startingPlanet;
-        float inputX, inputY, calcVelocity, descent, lastYPosition;
+        float inputX, inputY, calcVelocity;
 
         isGameLoopRunning = true;
         while (isGameLoopRunning)
         {
             try {
                 // Create new active block
-                activeBlockImage = new PlanetBlockImageView(this.gameBoardContext, nextPlanet);
-
-                // Add new block to Game Board and game layout
-                this.gameBoard.addNewBlock(activeBlockImage);
-                this.viewModel.addImageViewToGameLayout(activeBlockImage);
-                lastYPosition = activeBlockImage.getY();
-                descent = 0;
+                activeImage = new ImageView(this.gameBoardContext);
+                activeImage.setImageResource(nextPlanet.getImageResource());
+                this.gameBoard.addToGameBoard(activeImage, nextPlanet);
+                this.viewModel.addImageViewToGameLayout(activeImage);
 
                 // Set next planet and display
                 nextPlanet = this.getRandomPlanet();
@@ -85,6 +80,7 @@ public class GameManager implements Runnable {
                     {
                         targetTime = (currentTime + msPerFrame) - (currentTime-targetTime);
                         inputX = this.viewModel.getHorizontalMotion();
+                        // TODO: gotta incorporate gravity eitehr with sensor or G of planet
                         inputY = this.viewModel.getVerticalMotion();
 
                         //TODO: decide if going to use inputY at all!
@@ -96,7 +92,7 @@ public class GameManager implements Runnable {
                             // TODO: calculate whether gravity guess is correct (+/-)
                     }
 
-                    this.viewModel.drawIndividualImage(activeBlockImage, this.gameBoard.getActiveCell());
+                    this.viewModel.drawIndividualImage(this.gameBoard.getActiveCell());
                 }
 
                 // Calculate points scored and add to session score
@@ -107,17 +103,23 @@ public class GameManager implements Runnable {
                     boolean isGameBoardInFlux = true;
                     this.gameSession.addPointsToScore(points);
                     this.viewModel.setScoreText(this.gameSession.getScore());
-                    this.gameBoard.destroyCells();
-                    isGameBoardInFlux = true;
+                    points = 0;
                     while (isGameBoardInFlux)
                     {
-                        isGameBoardInFlux = this.gameBoard.repositionRemainingBlocks(this.gameVelocity);
+                        isGameBoardInFlux = this.destroyCells(this.gameVelocity);
                     }
-                    this.viewModel.drawGameBoard(this.gameBoard);
-
-                    //TODO: nightmare to check all combinations of new scores without activecell as anchor
-                    // points = this.gameBoard.calculateScore();
-                    points = 0; // TODO: see above re scoring for fallen blocks, maybe once blocks have settled.
+                    // Check game board for new combinations
+                    GameBoardCell cell;
+                    for (int row = 0; row < this.gameBoard.getRows(); row++)
+                    {
+                        for (int column = 0; column < this.gameBoard.getColumns(); column++) {
+                            cell = this.gameBoard.getCell(column, row);
+                            if (cell.isOccupied())
+                            {
+                                points += this.gameBoard.calculateScore(cell) * this.gameSession.getLevel();
+                            }
+                        }
+                    }
                 }
 
                 // Check whether to increment the game level
@@ -130,6 +132,7 @@ public class GameManager implements Runnable {
                 {
                     // TODO: last block not always showing in top position
                     isGameLoopRunning = false;
+                    this.viewModel.displayGameOverImage(this.gameBoardContext);
                     Log.i("GameManager", "Game Over!");
                     //TODO: save score to xml
                     //TODO: navigate to HiScores
@@ -145,6 +148,40 @@ public class GameManager implements Runnable {
     }
 
     /**
+     * Iterates through the game board and moves blocks with no block below down screen.
+     * @return whether any block is still falling.
+     */
+    private boolean destroyCells(float velocity)
+    {
+        boolean thisBlockIsStillFalling = false;
+        boolean anyBlockIsStillFalling = false;
+        GameBoardCell cell;
+        for (int row = 0; row < this.gameBoard.getRows(); row++)
+        {
+            for (int column = 0; column < this.gameBoard.getColumns(); column++)
+            {
+                cell = this.gameBoard.getCell(column, row);
+
+                if (cell.isDestroyed())
+                {
+                    //TODO: do i want to lose reference yet?
+                    this.viewModel.removeImageViewFromGameLayout(cell.getImageView());
+                    this.gameBoard.resetCell(cell);
+                }
+
+                if (cell.isOccupied())
+                {
+                    thisBlockIsStillFalling = this.gameBoard.moveBlockY(cell, velocity);
+                    anyBlockIsStillFalling = thisBlockIsStillFalling ? true : anyBlockIsStillFalling;
+                    this.viewModel.drawIndividualImage(cell);
+                }
+            }
+        }
+
+        return anyBlockIsStillFalling;
+    }
+
+    /**
      * Calculates the velocity of the falling block based on the gravity of the current and active
      * planets, the level and the input from the player.
      * @param inputY the input from the player.
@@ -156,7 +193,6 @@ public class GameManager implements Runnable {
         //TODO: calculate velocity. Consider some getters (pretty convoluted) or different class.
         // TODO: retain previous value to check for change?
         // TODO: need to calibrate/reset at some point
-        Log.d("GameManager", "Calculated velocity: " + calcVelocity + " from current planet G=" + this.gameSession.getCurrentPlanet().getGravity() + ", active planet G=" + this.gameBoard.getActiveCell().getPlanet().getGravity() + ", level=" + gameVelocity + ", inputY=" + inputY +".");
         return calcVelocity;
     }
 
@@ -176,7 +212,7 @@ public class GameManager implements Runnable {
     private void levelUp()
     {
         this.gameSession.incrementLevel();
-        this.gameVelocity += 1;
+        this.gameVelocity += this.gameSession.getLevel() % 5 == 0 ? 1 : 0;
         this.viewModel.setLevelText(Integer.toString(this.gameSession.getLevel()));
 
         // Select a new current planet
@@ -184,14 +220,13 @@ public class GameManager implements Runnable {
         this.gameSession.setCurrentPlanet(nextPlanet);
         this.viewModel.setNextPlanet(nextPlanet);
 
-        Log.i("GameManager", "Levelled up: " + this.gameSession.getLevel() + ".");
-        Log.i("GameManager", "Next planet: " + nextPlanet.toString() + ".");
+        Log.i("GameManager", "Levelled up: " + this.gameSession.getLevel() + ", next planet: " + nextPlanet.toString() + ".");
     }
 
     /* Getters and Setters */
 
     /**
-     * Returns a random planet from PlanetsEnum.
+     * Returns a random planet from PlanetsEnum (excludes NULL_PLANET).
      * @return a random planet from PlanetsEnum;
      */
     private PlanetsEnum getRandomPlanet() {
@@ -201,7 +236,7 @@ public class GameManager implements Runnable {
 
     /**
      * Gets the next planet in order of distance from the sun. If index is greater than the number
-     * of planets than the value loops back to 1 (Mercury).
+     * of planets than the value loops back to 1 (Mercury), excludes NULL_PLANET.
      * @return the next planet after the current Planet in order of distance from the sun.
      */
     private PlanetsEnum getNextPlanet(PlanetsEnum currentPlanet)
