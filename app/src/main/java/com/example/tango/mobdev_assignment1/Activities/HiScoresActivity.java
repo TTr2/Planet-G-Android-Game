@@ -1,0 +1,15 @@
+package com.example.tango.mobdev_assignment1.Activities;
+
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+
+import com.example.tango.mobdev_assignment1.R;
+
+public class HiScoresActivity extends AppCompatActivity {
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_hi_scores);
+    }
+}

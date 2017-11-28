@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.constraint.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/GameConstraintLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:keepScreenOn="true"
+    tools:context="com.example.tango.mobdev_assignment1.Activities.GameActivity">
+
+    <ImageView
+        android:id="@+id/GameBgndImageView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:scaleType="centerCrop"
+        app:srcCompat="@drawable/galaxy4"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_marginBottom="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginRight="8dp"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
+        android:layout_marginEnd="8dp" />
+
+    <GridLayout
+        android:id="@+id/GameDetailsGridLayout"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_column="0"
+        android:layout_row="0"
+        android:columnCount="4"
+        android:rowCount="2"
+        tools:layout_editor_absoluteY="0dp"
+        tools:layout_editor_absoluteX="8dp"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintLeft_toLeftOf="@+id/GameConstraintLayout"
+        app:layout_constraintRight_toRightOf="@+id/GameConstraintLayout"
+        app:layout_constraintTop_toTopOf="@+id/GameConstraintLayout"
+        >
+
+        <TextView
+            android:id="@+id/ScoreHeaderText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_column="0"
+            android:layout_columnSpan="1"
+            android:layout_columnWeight="1"
+            android:layout_row="0"
+            android:layout_rowSpan="1"
+
+            android:fontFamily="sans-serif-smallcaps"
+            android:text="SCORE"
+            android:textColor="@android:color/background_light"
+            android:textSize="18sp"
+            android:textStyle="bold"
+
+            />
+
+        <TextView
+            android:id="@+id/LevelHeaderText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_column="0"
+            android:layout_columnSpan="1"
+            android:layout_columnWeight="1"
+            android:layout_row="1"
+            android:layout_rowSpan="1"
+            android:fontFamily="sans-serif-smallcaps"
+
+            android:text="LEVEL"
+            android:textAlignment="viewStart"
+            android:textColor="@android:color/background_light"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/ScoreText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_column="1"
+            android:layout_columnSpan="1"
+            android:layout_columnWeight="3"
+            android:layout_row="0"
+
+            android:layout_rowSpan="1"
+            android:text="0,000,000"
+            android:textColor="@android:color/holo_orange_dark"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/LevelText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_column="1"
+            android:layout_columnSpan="1"
+            android:layout_columnWeight="3"
+            android:layout_row="1"
+
+            android:layout_rowSpan="1"
+            android:fontFamily="monospace"
+            android:text="1"
+            android:textColor="@color/colorAccent"
+            android:textSize="24sp"
+            android:textStyle="bold" />
+
+
+        <ImageView
+            android:id="@+id/NextPlanetImage"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_column="2"
+            android:layout_columnSpan="1"
+            android:layout_columnWeight="2"
+            android:layout_gravity="left"
+            android:layout_row="0"
+            android:layout_rowSpan="2"
+            android:adjustViewBounds="true"
+
+            android:cropToPadding="false"
+            android:maxWidth="100dp"
+            android:minWidth="100dp"
+            android:scaleType="fitCenter"
+            app:srcCompat="@drawable/earth" />
+
+        <TextView
+            android:id="@+id/NextPlanetHeaderText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_column="3"
+            android:layout_columnSpan="1"
+            android:layout_columnWeight="2"
+            android:layout_row="0"
+            android:fontFamily="sans-serif-smallcaps"
+            android:text="NEXT"
+            android:textAlignment="center"
+            android:textColor="@android:color/background_light"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/NextPlanetNameText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_column="3"
+            android:layout_columnSpan="1"
+            android:layout_columnWeight="2"
+            android:layout_row="1"
+            android:layout_rowSpan="1"
+            android:fontFamily="sans-serif-smallcaps"
+
+            android:text="EARTH"
+            android:textAlignment="center"
+            android:textColor="@color/colorAccent"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </GridLayout>
+
+    <com.example.tango.mobdev_assignment1.Game.GameRelativeLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/GameLayout"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginBottom="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginLeft="8dp"
+        android:layout_marginRight="8dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="0dp"
+        app:layout_constraintBottom_toBottomOf="@+id/GameBgndImageView"
+        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintLeft_toLeftOf="@+id/GameBgndImageView"
+        app:layout_constraintRight_toRightOf="@+id/GameBgndImageView"
+        app:layout_constraintTop_toBottomOf="@+id/GameDetailsGridLayout"
+        app:layout_constraintVertical_bias="0.0"
+        >
+
+    </com.example.tango.mobdev_assignment1.Game.GameRelativeLayout>
+
+</android.support.constraint.ConstraintLayout>
