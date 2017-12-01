@@ -5,12 +5,14 @@ import android.graphics.Canvas;
 
 import com.example.tango.mobdev_assignment1.R;
 
+import java.io.Serializable;
+
 /**
- * Represents a cell in the gameboard that does not contain a PlanetBlockImageView
+ * Overrides ImageView to disable onDraw method.
  * Created by tango on 21/11/2017.
  */
 
-public class NullImageView extends android.support.v7.widget.AppCompatImageView {
+public class NullImageView extends android.support.v7.widget.AppCompatImageView implements Serializable {
 
     /**
      * Constructor for a NullPlanetBlockImageView object.

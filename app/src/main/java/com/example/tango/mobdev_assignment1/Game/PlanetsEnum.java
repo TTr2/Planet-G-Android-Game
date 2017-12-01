@@ -41,6 +41,13 @@ public enum PlanetsEnum implements Serializable {
         this.distanceFromEarth = distanceFromEarth;
     }
 
+    /**
+     * Default constructor for serializing.
+     */
+    PlanetsEnum()
+    {
+    }
+
     public int getOrder() { return order; }
     public int getImageResource() { return drawableId; }
     public float getMass() { return mass; }

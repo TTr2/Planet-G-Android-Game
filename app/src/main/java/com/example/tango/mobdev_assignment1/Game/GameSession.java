@@ -1,5 +1,7 @@
 package com.example.tango.mobdev_assignment1.Game;
 
+import android.content.Context;
+
 import java.io.Serializable;
 
 /**
@@ -7,7 +9,7 @@ import java.io.Serializable;
  * Created by tango on 20/11/2017.
  */
 
-class GameSession implements Serializable {
+public class GameSession implements Serializable {
 
     private GameBoard gameBoard;
     private PlanetsEnum currentPlanet;
@@ -19,7 +21,8 @@ class GameSession implements Serializable {
      * @param gameBoard the game board.
      * @param startingPlanet the starting planet.
      */
-    protected GameSession(GameBoard gameBoard, PlanetsEnum startingPlanet){
+    public GameSession(GameBoard gameBoard, PlanetsEnum startingPlanet)
+    {
         this.gameBoard = gameBoard;
         this.currentPlanet = startingPlanet;
         this.level = 1;
@@ -42,10 +45,10 @@ class GameSession implements Serializable {
     /* Getters & Setters */
 
     /**
-     * Gets the session's game board.
-     * @return the session's game board.
+     * Sets the level.
+     * @param level the level.
      */
-    public GameBoard getGameBoard() { return gameBoard; }
+    protected void setLevel(int level) { this.level = level; }
 
     /**
      * Sets the session's game board when pausing and resuming.
@@ -78,4 +81,10 @@ class GameSession implements Serializable {
      * @return the current player score.
      */
     protected long getScore() { return this.score; }
+
+    /**
+     * gets the game board from the session.
+      * @return the game board object.
+     */
+    public GameBoard getGameBoard() { return this.gameBoard; }
 }

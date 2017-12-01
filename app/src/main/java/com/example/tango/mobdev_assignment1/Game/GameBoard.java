@@ -24,10 +24,10 @@ public class GameBoard implements Serializable {
     private float direction;
     private GameBoardCell[][] gameBoardCells;
     private GameBoardCell activeCell;
-    private ImageView nullImageView;
+    private transient ImageView nullImageView;
 
     /**
-     * Constructor for GameBoard object, it is instantiated by the GameManager after the
+     * Constructor for GameBoard object, it is instantiated by the GameController after the
      * GameSurfaceView's onSizeChanged() event is called when activity is created.
      * @param context the GameSurfaceView context.
      */
@@ -47,6 +47,11 @@ public class GameBoard implements Serializable {
     }
 
     /**
+     * Default constructor for serializing.
+     */
+    public GameBoard() { }
+
+    /**
      * Generates and returns a new 2D array of GameBoardCells, configured using the fields in the
      * GameBoard class.
      * @return a new 2D array of GameBoardCells.
@@ -61,8 +66,8 @@ public class GameBoard implements Serializable {
             y = GameBoard.viewHeight - this.cellSize;
 
             for (int row = 0; row < this.rows; row++) {
-                newGameBoard[column][row] = new GameBoardCell(column, row, this.nullImageView,
-                        this.cellSize, x, y);
+                newGameBoard[column][row] = new GameBoardCell(column, row, this.cellSize, x, y,
+                        this.nullImageView, PlanetsEnum.NULL_PLANET);
 
                 // Set the y position to use for the next cell upwards.
                 y -= this.cellSize;
@@ -102,19 +107,20 @@ public class GameBoard implements Serializable {
     }
 
     /**
-     * Adds a new block to the game board and assigns as the active block.
+     * Adds a new block to the game board in starting cell.
      * @param activeImage the active planet ImageView.
      */
-    public void addNewBlock(ImageView activeImage)
+    public void addToGameBoard(ImageView activeImage, PlanetsEnum planet)
     {
         this.activeCell = this.getCell(startingColumn, startingRow);
+        this.activeCell.setPlanet(planet);
         this.activeCell.setImageView(activeImage);
         this.activeCell.setOccupied(true);
         Log.d("GameBoard", "Added new block: active cell=" + this.activeCell.getColumn() + "," + this.activeCell.getRow() + ", image pos= " + this.activeCell.getImageX() + "," + this.activeCell.getImageY() + ".");
     }
 
     /**
-     * Moves the active planet block downwards on the Y axis, checking for occupied blocks below.
+     * Moves the active planet image downwards on the Y axis, checking for occupied blocks below.
      * @param velocity the pixels to move the block downwards.
      * @return whether the block is still falling and not obstructed.
      */
@@ -123,57 +129,60 @@ public class GameBoard implements Serializable {
         float targetTopEdgeY = cell.getImageY() + velocity;
         float targetBottomEdgeY = targetTopEdgeY + this.cellSize;
         int activeColumn = cell.getColumn();
-        GameBoardCell blockingCell = this.getCell(activeColumn, 0);
-        int stoppingPointY = blockingCell.getCellY();
-        boolean isBlockFalling;
+        boolean isBlockFalling = true;
+        int stoppingPointY;
+        GameBoardCell cellBelow = cell.getCellDown();
 
-        // Starting from the top row down find next occupied row
-        for (int row = cell.getRow() - 1; row >= 0; row--)
+        if (cellBelow == null) // Bottom row edge case
         {
-            blockingCell = this.getCell(activeColumn, row);
-            if (blockingCell.isOccupied())
+            stoppingPointY = this.getCell(activeColumn, 0).getCellY() + this.cellSize;
+            if (targetBottomEdgeY < stoppingPointY)
             {
-                stoppingPointY = blockingCell.getCellY();
-                break;
+                cell.setImageY(targetTopEdgeY);
+                isBlockFalling = true;
+            }
+            else
+            {
+                cell.setImageY(cell.getCellY());
+                isBlockFalling = false;
             }
         }
-
-        // If poss, velocity is applied and Y is altered
-        if (targetBottomEdgeY < stoppingPointY)
+        else // Not bottom row
         {
-            // Safe to set new Y position
-            cell.setImageY(targetTopEdgeY);
-
-            // Check if in a new row, starting from last known row
-            for (int row = cell.getRow() - 1; row >blockingCell.getRow(); row--)
+            stoppingPointY = cellBelow.getCellY();
+            if (cellBelow.isOccupied())
             {
-                GameBoardCell tmpCell = this.getCell(activeColumn, row);
-                if (targetTopEdgeY < tmpCell.getCellY()
-                        && targetBottomEdgeY > tmpCell.getCellY()
-                        && cell.getRow() != tmpCell.getRow())
+                if (targetBottomEdgeY < stoppingPointY)
                 {
-                    this.switchActiveCell(activeColumn, row,
-                            cell.getImageX(), cell.getImageY());
-                    break;
+                    cell.setImageY(targetTopEdgeY);
+                    isBlockFalling = true;
+                }
+                else
+                {
+                    cell.setImageY(cellBelow.getCellY() - this.cellSize);
+                    isBlockFalling = false;
                 }
             }
-
-            isBlockFalling = true;
-        }
-        else if (targetTopEdgeY < stoppingPointY)
-        {
-            // Safe to set new Y position
-            cell.setImageY(targetTopEdgeY);
-            isBlockFalling = true;
-        }
-        else
-        {
-            if (cell.getRow() != this.startingRow)
+            else // Proceed but check if change cell
             {
-                cell.setImageY(stoppingPointY);
-            }
+                cell.setImageY(targetTopEdgeY);
+                isBlockFalling = true;
 
-            isBlockFalling = false;
+                // Only true when block first crosses lower boundary
+                if (targetTopEdgeY < stoppingPointY
+                        && targetBottomEdgeY > stoppingPointY)
+                {
+                    // Only assign to active cell if argument was the active cell
+                    if (cell == this.activeCell)
+                    {
+                        this.activeCell = this.switchCells(cell, cellBelow);
+                    }
+                    else
+                    {
+                        this.switchCells(cell, cellBelow);
+                    }
+                }
+            }
         }
 
         return isBlockFalling;
@@ -186,8 +195,7 @@ public class GameBoard implements Serializable {
      * @param isBlockFalling whether the block is falling.
      * @return whether the block is still falling.
      */
-    protected boolean moveBlockX(float inputX, boolean isBlockFalling)
-    {
+    protected boolean moveBlockX(float inputX, boolean isBlockFalling) {
         int stoppingPointX;
         float projectedX;
         long waitTime = 500;
@@ -197,12 +205,111 @@ public class GameBoard implements Serializable {
         float tolerance = 0.25f;
         float factor = 1.5f;
 
-        // Ignore noise above/below tolerance threshold
-        if (Math.abs(inputX) > tolerance)
+
+
+        this.direction += (inputX * -1) * factor;
+
+        if (Math.abs(this.direction) > this.cellSize)
         {
-            /* Invert input direction so that tipping the screen moves blocks 'down' not 'up'
-            and apply factor to increase sensitivity before adding to direction */
-            this.direction += (inputX * -1) * factor;
+            activeColumn = this.activeCell.getColumn();
+
+            // Heading left to right
+            if (this.direction > 0 && activeColumn < this.columns - 1)
+                neighbouringColumn = activeColumn + 1;
+            // Heading right to left
+            else if (this.direction < 0 && activeColumn > 0)
+                neighbouringColumn = activeColumn - 1;
+            // Can't change column
+            else
+                neighbouringColumn = activeColumn;
+
+            // If block not in extreme left or right column
+            if (neighbouringColumn != activeColumn)
+            {
+                GameBoardCell neighbourCell = this.getCell(neighbouringColumn,
+                        this.activeCell.getRow());
+
+                if (!neighbourCell.isOccupied())
+                {
+                    this.activeCell = this.switchCells(this.activeCell, neighbourCell);
+                    this.activeCell.setImageX(this.activeCell.getCellX());
+                    this.direction = 0;
+                    isBlockFalling = this.moveBlockY(this.activeCell, 0);
+                }
+            }
+        }
+
+         return isBlockFalling;
+    }
+
+        //TODO: think about this more - snap to majority column if isBlockFalling = false?
+/*
+        // Ignore noise above/below tolerance threshold
+        if (Math.abs(inputX) > tolerance) {
+            float targetLeftEdgeX = this.activeCell.getCellX() + inputX;
+            float targetRightEdgeX = targetLeftEdgeX + this.cellSize;
+            GameBoardCell neighbourCell;
+
+            // Invert input direction so that tipping the screen moves blocks 'down' not 'up'
+            float direction = (inputX * -1);
+
+            if (direction > tolerance)
+            {
+                neighbourCell = this.activeCell.getCellRight();
+                if (neighbourCell != null)
+                {
+                    if (neighbourCell.isOccupied())
+                    {
+                        stoppingPointX = neighbourCell.getCellX();
+                        if (targetRightEdgeX < stoppingPointX)
+                        {
+                            this.activeCell.setImageX(targetLeftEdgeX);
+                        }
+                        else
+                        {
+                            this.activeCell.setImageX(stoppingPointX - this.cellSize);
+                        }
+
+                    }
+                    else
+                    {
+                        this.activeCell.setImageX(targetLeftEdgeX);
+
+                        // check for switch?
+                    }
+                }
+            }
+            else if (direction < (tolerance * -1))
+            {
+                neighbourCell = this.activeCell.getCellLeft();
+                if (neighbourCell.isOccupied())
+                {
+                    stoppingPointX = neighbourCell.getCellX() + this.cellSize;
+                }
+                else
+                {
+                    this.activeCell.setImageX(targetLeftEdgeX);
+
+                    // check for switch?
+                }
+            }
+        }
+
+        return this.moveBlockY(this.activeCell, 0);
+    }
+*/
+/*
+                    && activeColumn < this.columns - 1)
+                neighbouringColumn = activeColumn + 1;
+                // Heading right to left
+            else if (direction < 0 && activeColumn > 0)
+                neighbouringColumn = activeColumn - 1;
+                // Can't change column
+            else
+                neighbouringColumn = activeColumn;
+
+
+
 
             if (Math.abs(this.direction) > this.cellSize)
             {
@@ -226,57 +333,59 @@ public class GameBoard implements Serializable {
 
                     if (!neighbourCell.isOccupied())
                     {
-                        if (this.switchActiveCell(neighbouringColumn, this.activeCell.getRow(),
-                                neighbourCell.getCellX(), this.activeCell.getImageY()))
-                        {
-                            this.direction = 0;
-                            isBlockFalling = this.moveBlockY(this.activeCell, 0);
-                        }
+                        this.activeCell = this.switchCells(this.activeCell, neighbourCell);
+                        this.activeCell.setImageX(this.activeCell.getCellX());
+                        this.direction = 0;
+                        isBlockFalling = this.moveBlockY(this.activeCell, 0);
                     }
                 }
             }
-        }
+*/
 
-        return isBlockFalling;
-    }
 
 
     /**
-     * Switches the active cell.
-     * @param column the new active cell column
-     * @param row the new active cell row
-     * @param imageX the X coordinate to set for the new active cell
-     * @param imageY the Y coordinate to set for the new active cell
-     * */
-    private boolean switchActiveCell(int column, int row, float imageX, float imageY)
+     * Switches the contents of two adjacent cells on the game board.
+     * @param sourceCell        the source cell to extract cell details from.
+     * @param destinationCell   the destiation cell to copy cell details to.
+     * @return whether the switch was successfull.
+     */
+    private GameBoardCell switchCells(GameBoardCell sourceCell, GameBoardCell destinationCell)
     {
-        boolean switchedOK = false;
-        GameBoardCell destinationCell = this.getCell(column, row);
-        Log.d("GameBoard", "Switching cell: active cell=" + this.activeCell.getColumn() + "," + this.activeCell.getRow() + ", image pos= " + this.activeCell.getImageX() + "," + this.activeCell.getImageY() + ".");
-        Log.d("GameBoard", "Switching cell: destination cell=" + destinationCell.getColumn() + "," + destinationCell.getRow() + ", image pos= " + destinationCell.getImageView().getX() + "," + destinationCell.getImageView().getY() + ".");
-        if (!destinationCell.isOccupied())
+        try
         {
-            // Update destination cell with active image and coordinates
-            destinationCell.setImageView(this.activeCell.getImageView());
-            destinationCell.setImageX(imageX);
-            destinationCell.setImageY(imageY);
-            destinationCell.setOccupied(true);
-            destinationCell.setDestroyed(false);
+            if (!destinationCell.isOccupied())
+            {
+                Log.d("GameBoard", "Switching cell: active cell=" + sourceCell.getColumn() + ","
+                        + sourceCell.getRow() + ", image pos= " + this.activeCell.getImageX() + ","
+                        + this.activeCell.getImageY() + ".\n Destination cell="
+                        + destinationCell.getColumn() + "," + destinationCell.getRow()
+                        + ", image pos= " + destinationCell.getImageView().getX() + ","
+                        + destinationCell.getImageView().getY() + ".");
 
-            // Reset the soon to be inactive cell
-            this.activeCell.setImageView(this.nullImageView);
-            this.activeCell.setImageX(this.activeCell.getCellX());
-            this.activeCell.setImageY(this.activeCell.getCellY());
-            this.activeCell.setOccupied(false);
-            this.activeCell.setDestroyed(false);
+                // Update destination cell with active image and coordinates
+                destinationCell.setPlanet(sourceCell.getPlanet());
+                destinationCell.setImageView(sourceCell.getImageView());
+                destinationCell.setImageX(sourceCell.getImageX());
+                destinationCell.setImageY(sourceCell.getImageY());
+                destinationCell.setOccupied(true);
+                destinationCell.setDestroyed(false);
 
-            // Update active cell
-            this.activeCell = destinationCell;
-            switchedOK = true;
+                // Reset the soon to be inactive cell
+                sourceCell.setPlanet(PlanetsEnum.NULL_PLANET);
+                sourceCell.setImageView(this.nullImageView);
+                sourceCell.setImageX(sourceCell.getCellX());
+                sourceCell.setImageY(sourceCell.getCellY());
+                sourceCell.setOccupied(false);
+                sourceCell.setDestroyed(false);
+            }
+        }
+        catch (NullPointerException e)
+        {
+            Log.e("GameBoard", "Null pointer exception switching cells: " + e.getMessage(), e);
         }
 
-        Log.d("GameBoard", "Switched cells: new active cell=" + this.activeCell.getColumn() + "," + this.activeCell.getRow() + ", image pos= " + this.activeCell.getImageX() + "," + this.activeCell.getImageY() + ".");
-        return switchedOK;
+        return destinationCell;
     }
 
     /**
@@ -286,10 +395,19 @@ public class GameBoard implements Serializable {
      */
     protected long calculateScore(GameBoardCell cell)
     {
-        boolean matchingPlanets = this.checkForThreeMatchingPlanets(cell);
-        if (matchingPlanets)
+        int matchingPlanets = cell.traverseForMatches(cell.getPlanet(), 0);
+        if (matchingPlanets == 1)
         {
-            return cell.traverse(cell, cell.getPointsPerBlock());
+            cell.setVisited(false);
+        }
+        else
+        {
+            this.resetCellVisitedStatus();
+        }
+
+        if (matchingPlanets >= 3)
+        {
+            return cell.traverseForPoints(cell.getPlanet(), cell.getPointsPerBlock());
         }
         else
         {
@@ -298,197 +416,33 @@ public class GameBoard implements Serializable {
     }
 
     /**
-     * Checks the game board for three adjacent matching planet blocks.
-     * @param cell the starting cell.
-     * @return whether the cell has three matching adjacent planet blocks.
+     * Resets all cell's visited  to empty cells.
      */
-    protected boolean checkForThreeMatchingPlanets(GameBoardCell cell)
+    private void resetCellVisitedStatus()
     {
-        PlanetsEnum planet = cell.getPlanet();
-        int matchingPlanets = 0;
-        GameBoardCell cell2, cell3;
-
-        // 3 down
-        cell2 = cell.getCellDown();
-        if (cell2 != null)
+        GameBoardCell cell;
+        for (int row = 0; row < this.rows; row++)
         {
-            cell3 = cell2.getCellDown();
-
-            if (cell3 != null)
+            for (int column = 0; column < this.columns; column++)
             {
-                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
+                cell = this.getCell(column, row);
+                if (cell.isVisited())
                 {
-                    return true;
+                    cell.setVisited(false);
                 }
             }
         }
+    }
 
-        // L top
-        cell2 = cell.getCellDown();
-        if (cell2 != null)
-        {
-            cell3 = cell2.getCellRight();
-
-            if (cell3 != null)
-            {
-                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
-                {
-                    return true;
-                }
-            }
-        }
-
-        // L right
-        cell2 = cell.getCellLeft();
-        if (cell2 != null)
-        {
-            cell3 = cell2.getCellUp();
-
-            if (cell3 != null)
-            {
-                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
-                {
-                    return true;
-                }
-            }
-        }
-
-        // rev L top
-        cell2 = cell.getCellDown();
-        if (cell2 != null)
-        {
-            cell3 = cell2.getCellLeft();
-
-            if (cell3 != null)
-            {
-                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
-                {
-                    return true;
-                }
-            }
-        }
-
-        // rev L left
-        cell2 = cell.getCellRight();
-        if (cell2 != null)
-        {
-            cell3 = cell2.getCellUp();
-
-            if (cell3 != null)
-            {
-                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
-                {
-                    return true;
-                }
-            }
-        }
-
-        // r left
-        cell2 = cell.getCellDown();
-        if (cell2 != null)
-        {
-            cell3 = cell.getCellRight();
-
-            if (cell3 != null)
-            {
-                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
-                {
-                    return true;
-                }
-            }
-        }
-
-        // r right
-        cell2 = cell.getCellLeft();
-        if (cell2 != null)
-        {
-            cell3 = cell2.getCellDown();
-
-            if (cell3 != null)
-            {
-                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
-                {
-                    return true;
-                }
-            }
-        }
-
-        // rev r left
-        cell2 = cell.getCellRight();
-        if (cell2 != null)
-        {
-            cell3 = cell2.getCellDown();
-
-            if (cell3 != null)
-            {
-                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
-                {
-                    return true;
-                }
-            }
-        }
-
-        // rev r right
-        cell2 = cell.getCellLeft();
-        if (cell2 != null)
-        {
-            cell3 = cell.getCellDown();
-
-            if (cell3 != null)
-            {
-                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
-                {
-                    return true;
-                }
-            }
-        }
-
-        // flat left
-        cell2 = cell.getCellRight();
-        if (cell2 != null)
-        {
-            cell3 = cell2.getCellRight();
-
-            if (cell3 != null)
-            {
-                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
-                {
-                    return true;
-                }
-            }
-        }
-
-        // flat middle
-        cell2 = cell.getCellLeft();
-        if (cell2 != null)
-        {
-            cell3 = cell.getCellRight();
-
-            if (cell3 != null)
-            {
-                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
-                {
-                    return true;
-                }
-            }
-        }
-
-        // flat right
-        cell2 = cell.getCellLeft();
-        if (cell2 != null)
-        {
-            cell3 = cell2.getCellLeft();
-
-            if (cell3 != null)
-            {
-                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+    /**
+     * Resets the provided cell to an unoccupied cell containing a NullImageView.
+     * @param cell the cell to reset.
+     */
+    public void resetCell(GameBoardCell cell) {
+        cell.setImageView(this.nullImageView);
+        cell.setOccupied(false);
+        cell.setVisited(false);
+        cell.setDestroyed(false);
     }
 
     /**
@@ -504,35 +458,16 @@ public class GameBoard implements Serializable {
                 cell = this.getCell(column, row);
                 if (cell.isDestroyed())
                 {
+                    //TODO: do i want to lose reference yet?
                     cell.setImageView(this.nullImageView);
                     cell.setOccupied(false);
+                    cell.setVisited(false);
                     cell.setDestroyed(false);
                 }
             }
         }
 
         Log.d("GameBoard", "Destroying cells.");
-    }
-
-    /**
-     * Iterates through the game board and moves blocks with no block below down screen.
-     * @return whether any block is still falling.
-     */
-    protected boolean repositionRemainingBlocks(float velocity) {
-        boolean thisBlockIsStillFalling = false;
-        boolean anyBlockIsStillFalling = false;
-        GameBoardCell cell;
-        for (int row = 0; row < this.rows; row++)
-        {
-            for (int column = 0; column < this.columns; column++)
-            {
-                cell = this.getCell(column, row);
-                thisBlockIsStillFalling = this.moveBlockY(cell, velocity);
-                anyBlockIsStillFalling = thisBlockIsStillFalling ? true : anyBlockIsStillFalling;
-            }
-        }
-
-        return anyBlockIsStillFalling;
     }
 
     /**
@@ -544,6 +479,16 @@ public class GameBoard implements Serializable {
     {
         GameBoard.viewWidth = w;
         GameBoard.viewHeight = h;
+    }
+
+    /**
+     * Sets the active cell, typically after session saved from disk.
+     * @param column the horizontal index.
+     * @param row the vertical index.
+     */
+    protected void setActiveCell(int column, int row)
+    {
+        this.activeCell = this.getCell(column, row);
     }
 
     /**
@@ -586,12 +531,17 @@ public class GameBoard implements Serializable {
     public boolean isGameOver()
     {
         return this.activeCell.getRow() == this.startingRow
-                && this.activeCell.getColumn() == this.startingColumn;
+                && this.activeCell.getColumn() == this.startingColumn
+                && this.activeCell.getCellDown() != null
+                && this.activeCell.getCellDown().isOccupied();
     }
 
     /**
-     * gets the size of a game cell
-     * @return the size of a game cell.
+     * Re-instantiates the NullImageView object with the context from the resumed layout.
+     * @param context the activity context.
      */
-    public int getCellSize() { return cellSize; }
+    public void refreshNullImageViewContext(Context context)
+    {
+        this.nullImageView = new NullImageView(context);
+    }
 }

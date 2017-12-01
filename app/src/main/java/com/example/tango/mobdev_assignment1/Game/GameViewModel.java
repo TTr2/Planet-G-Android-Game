@@ -5,46 +5,55 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.util.Log;
+import android.view.View;
 import android.widget.GridLayout;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import com.example.tango.mobdev_assignment1.Activities.GameActivity;
+import com.example.tango.mobdev_assignment1.Activities.MainActivity;
 import com.example.tango.mobdev_assignment1.R;
-
+import com.google.gson.Gson;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStreamReader;
 import java.util.Locale;
 
 import static android.content.Context.SENSOR_SERVICE;
 
 /**
- * The GameViewModel class implements the MVVM pattern to abstract the view implementation from the
- * GameManager controller.
+ * The GameViewModel class implements the MVVM pattern to abstract the view and sensor input
+ * implementation from the GameController; view operations are performed on the UI main thread.
  * Created by tango on 24/11/2017.
  */
 
 public class GameViewModel {
 
-    private GameActivity activity;
-    private TextView levelText;
-    private TextView scoreText;
-    private TextView nextPlanetText;
-    private ImageView nextPlanetImage;
-    private GridLayout gameDetailsGrid;
-    private RelativeLayout gameLayout;
-    private Sensor accelerometer;
-    private Sensor gyroscope;
+
+
     private float ax_Roll = 0;
     private float ay_Pitch = 0;
     private float az_Yaw = 0;
     private float min_az_Yaw;
     private float max_az_Yaw;
-
-
     private float gx_Roll = 0;
     private float gy_Pitch = 0;
     private float gz_Yaw = 0;
     private float min_gx_Roll;
     private float max_gx_Roll;
+    private GameActivity activity;
+    private TextView levelText;
+    private TextView scoreText;
+    private TextView nextPlanetText;
+    private ImageView nextPlanetImage;
+    private ImageView gameOverImage;
+    private GridLayout gameDetailsGrid;
+    private RelativeLayout gameLayout;
+    private Sensor accelerometer;
+    private Sensor gyroscope;
 
     private SensorEventListener accelerometerEventListener = new SensorEventListener(){
 
@@ -61,9 +70,7 @@ public class GameViewModel {
         @Override
         public void onAccuracyChanged(Sensor sensor, int accuracy) {}
     };
-
     private SensorEventListener gyroscopeEventListener = new SensorEventListener(){
-
         @Override
         public void onSensorChanged(SensorEvent event) {
             if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE)
@@ -89,6 +96,7 @@ public class GameViewModel {
         this.levelText = (TextView) context.findViewById(R.id.LevelText);
         this.nextPlanetText = (TextView) context.findViewById(R.id.NextPlanetNameText);
         this.nextPlanetImage = (ImageView) context.findViewById(R.id.NextPlanetImage);
+        this.gameOverImage = (ImageView) context.findViewById(R.id.GameOverImage);
         this.gameDetailsGrid = (GridLayout) context.findViewById(R.id.GameDetailsGridLayout);
         this.gameLayout = (RelativeLayout) context.findViewById(R.id.GameLayout);
         SensorManager sensorManager = (SensorManager) this.activity.getSystemService(SENSOR_SERVICE);
@@ -109,43 +117,41 @@ public class GameViewModel {
     /**
      * Draws the game board images on the GameSurfaceView canvas.
      */
-    protected void drawGameBoard(GameBoard gameBoard)
+    protected void drawGameBoard(final GameBoard gameBoard)
     {
-        final GameBoard tmpGameBoard = gameBoard;
         this.activity.runOnUiThread(new Runnable() {
 
             @Override
             public void run() {
-
-                // Draw all blocks on game board
-                for (int column = 0; column < tmpGameBoard.getColumns(); column++)
+            // Draw all blocks on game board
+            for (int column = 0; column < gameBoard.getColumns(); column++)
+            {
+                for (int row = 0; row < gameBoard.getRows(); row++)
                 {
-                    for (int row = 0; row < tmpGameBoard.getRows(); row++)
+                    if (gameBoard.getCell(column, row).isOccupied())
                     {
-                        tmpGameBoard.getCell(column, row).getImageView().invalidate();
+                        gameBoard.getCell(column, row).getImageView().invalidate();
                     }
                 }
+            }
             }
         });
     }
 
     /**
      * Redraws an individual block on the game board.
-     * @param imageView
-     * @param cell the GameBoardCell to extract the x and y coordinates to redraw the image at.
+     * @param cell the GameBoardCell to extract the image and x,y coordinates to redraw the image at.
      */
-    protected void drawIndividualImage(ImageView imageView, GameBoardCell cell)
+    protected void drawIndividualImage(final GameBoardCell cell)
     {
-        final ImageView tmpImageView = imageView;
-        final float tmpX = cell.getImageX();
-        final float tmpY = cell.getImageY();
+        final ImageView tmpImageView = cell.getImageView();
         this.activity.runOnUiThread(new Runnable()
         {
             @Override
             public void run()
             {
-                tmpImageView.setX(tmpX);
-                tmpImageView.setY(tmpY);
+                tmpImageView.setX(cell.getImageX());
+                tmpImageView.setY(cell.getImageY());
                 tmpImageView.invalidate();
             }
         });
@@ -153,20 +159,32 @@ public class GameViewModel {
 
     /**
      * Adds an image view to the game layout.
-     * @param imageView
+     * @param imageView the new image to add to layout.
      */
-    protected void addImageViewToGameLayout(ImageView imageView)
+    protected void addImageViewToGameLayout(final ImageView imageView)
     {
-        final ImageView tmpImageView = imageView;
-        final RelativeLayout tmpLayout = this.gameLayout;
-        this.activity.runOnUiThread(new Runnable()
+         this.activity.runOnUiThread(new Runnable()
         {
             @Override
             public void run()
             {
-                tmpLayout.addView(tmpImageView);
-                tmpImageView.invalidate();
-                tmpLayout.invalidate();
+                gameLayout.addView(imageView);
+                imageView.invalidate();
+            }
+        });
+    }
+
+    /**
+     * Removes an image view from the game layout.
+     * @param imageView the image to remove from the game layout.
+     */
+    public void removeImageViewFromGameLayout(final ImageView imageView)
+    {
+        this.activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                gameLayout.removeView(imageView);
+                gameLayout.invalidate();
             }
         });
     }
@@ -175,33 +193,30 @@ public class GameViewModel {
      * Updates the score TextView with latest score from game session.
      * @param score the new score to display as formatted string.
      */
-    protected void setScoreText(long score)
+    protected void setScoreText(final long score)
     {
-        String str = String.format(Locale.ENGLISH, "%07d", score);
-        final String scoreStr = str.substring(0,1) + "," + str.substring(1,4) + "," + str.substring(4,7);
-        final TextView tmpScoreText = this.scoreText;
+        String str = String.format(Locale.ENGLISH, "%08d", score);
+        final String scoreStr = str.substring(0,2) + "," + str.substring(2,5) + "," + str.substring(5,8);
         this.activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                tmpScoreText.setText(scoreStr);
-                tmpScoreText.invalidate();
+                scoreText.setText(scoreStr);
+                scoreText.invalidate();
             }
         });
     }
 
     /**
      * Updates the game level TextView with latest level from game session.
-     * @param levelText the new level text
+     * @param levelTextStr the new level text
      */
-    protected void setLevelText(String levelText)
+    protected void setLevelText(final String levelTextStr)
     {
-        final TextView tmpLevelText = this.levelText;
-        final String tmpLevelStr = levelText;
         this.activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                tmpLevelText.setText(tmpLevelStr);
-                tmpLevelText.invalidate();
+                levelText.setText(levelTextStr);
+                levelText.invalidate();
             }
         });
     }
@@ -220,35 +235,90 @@ public class GameViewModel {
      * Sets the next planet name.
      * @return the next planet name.
      */
-    protected void setNextPlanetText(String nextPlanetName)
+    protected void setNextPlanetText(final String nextPlanetName)
     {
-        final TextView tmpNextPlanetText = this.nextPlanetText;
-        final String tmpPlanetNameStr = nextPlanetName;
         this.activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                tmpNextPlanetText.setText(tmpPlanetNameStr);
-                tmpNextPlanetText.invalidate();
+                nextPlanetText.setText(nextPlanetName);
+                nextPlanetText.invalidate();
             }
         });
     }
 
     /**
-     * Updates the next Planet ImageView with image of next PlanetBlockImageView to drop
-     * from game session.
-     * @param nextPlanetDrawableId the drawable id of the new image.
+     * Updates the next Planet ImageView with image of next Planet to drop.
+     * @param nextPlanetDrawableId the drawable id of the nxt planet image.
      */
-    protected void setNextPlanetImage(int nextPlanetDrawableId)
+    protected void setNextPlanetImage(final int nextPlanetDrawableId)
     {
-        final ImageView tmpNextPlanetImage = this.nextPlanetImage;
-        final int tmpPlanetDrawableId = nextPlanetDrawableId;
         this.activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                tmpNextPlanetImage.setImageResource(tmpPlanetDrawableId);
-                tmpNextPlanetImage.invalidate();
+                nextPlanetImage.setImageResource(nextPlanetDrawableId);
+                nextPlanetImage.invalidate();
             }
         });
+    }
+
+    /**
+     * Saves a JSON serialized string representing the game session to private internal storage.
+     * @param sessionStateAsJson the game session to save, as a JSON string.
+     */
+    public void saveSessionState(String sessionStateAsJson)
+    {
+        try
+        {
+            FileOutputStream outputStream = this.activity.openFileOutput(MainActivity.sessionStateFileName, Context.MODE_PRIVATE);
+            outputStream.write(sessionStateAsJson.getBytes());
+            outputStream.close();
+            Log.e("GameViewModel", "Saved session state.");
+        }
+        catch (Exception e)
+        {
+            Log.e("GameViewModel", "Failed to read saved state ", e);
+        }
+    }
+
+    /**
+     * Attempts to load a saved Game Session state from app's internal directory, if present else
+     * returns null.
+     * @return a saved Game Session state if present (can return null).
+     */
+    public SerializableSessionState loadSessionState()
+    {
+        try
+        {
+            File file = new File(this.activity.getFilesDir(), MainActivity.sessionStateFileName);
+            if (file != null)
+            {
+                StringBuilder stringBuilder = new StringBuilder();
+                FileInputStream inputStream = activity.openFileInput(MainActivity.sessionStateFileName);
+                InputStreamReader inputStreamReader = new InputStreamReader(inputStream);
+                BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
+                String line;
+                while ((line = bufferedReader.readLine()) != null) {
+                    stringBuilder.append(line);
+                }
+
+                String gsonString = stringBuilder.toString();
+                if (gsonString != null && !gsonString.isEmpty())
+                {
+                    Gson gson = new Gson();
+                    SerializableSessionState sessionValues = gson.fromJson(gsonString,
+                            SerializableSessionState.class);
+                    this.activity.deleteFile(MainActivity.sessionStateFileName);
+                    Log.e("GameViewModel", "Saved session state.");
+                    return sessionValues;
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            Log.e("GameViewModel", "Failed to load saved state. ", e);
+        }
+
+        return null;
     }
 
     /**
@@ -264,11 +334,7 @@ public class GameViewModel {
      * Gets the motion of the device on the horizontal axis.
      * @return the motion of the device on the horizontal axis.
      */
-    protected float getHorizontalMotion()
-    {
-//        return gx_Roll;
-        return ax_Roll;
-    }
+    protected float getHorizontalMotion() { return ax_Roll; }
 
     /**
      * Gets the normalized motion of the device on the vertical axis (-1 to 1).
@@ -294,11 +360,23 @@ public class GameViewModel {
      * Gets the context of the game board layout for instantiating null image objects.
      * @return the context of the game board layout.
      */
-    protected Context getGameBoardLayoutContext()
+    protected Context getGameLayoutContext()
     {
         return this.gameLayout.getContext();
     }
 
-
-
+    /**
+     * Displays the game over display image.
+     */
+    public void displayGameOverImage()
+    {
+        this.activity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                gameOverImage.setVisibility(View.VISIBLE);
+                gameOverImage.bringToFront();
+                gameOverImage.invalidate();
+            }
+        });
+    }
 }

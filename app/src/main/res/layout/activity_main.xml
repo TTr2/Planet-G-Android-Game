@@ -9,8 +9,8 @@
 
     <ImageView
         android:id="@+id/MainMenuBgndImageView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
         android:scaleType="fitXY"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
@@ -32,7 +32,7 @@
         android:layout_marginRight="8dp"
         android:layout_marginStart="8dp"
         android:layout_marginTop="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/NewGameButton"
+        app:layout_constraintBottom_toTopOf="@+id/PlayGameButton"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -42,7 +42,7 @@
         tools:layout_constraintLeft_creator="1" />
 
     <Button
-        android:id="@+id/NewGameButton"
+        android:id="@+id/PlayGameButton"
         style="@style/Widget.AppCompat.Button.Colored"
         android:layout_width="150dp"
         android:layout_height="70dp"
@@ -70,7 +70,7 @@
         android:textStyle="bold"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/NewGameButton"
+        app:layout_constraintTop_toBottomOf="@+id/PlayGameButton"
         tools:layout_constraintRight_creator="1"
         tools:layout_constraintLeft_creator="1" />
 

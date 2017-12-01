@@ -45,6 +45,6 @@ public class GameRelativeLayout extends RelativeLayout {
     public void onWindowFocusChanged(boolean hasWindowFocus) {
         super.onWindowFocusChanged(hasWindowFocus);
         GameBoard.setGameBoardDimensions(this.getWidth(), this.getHeight());
-        ((GameActivity) this.getContext()).launchGameManager();
+        ((GameActivity) this.getContext()).launchNewGameController();
     }
 }

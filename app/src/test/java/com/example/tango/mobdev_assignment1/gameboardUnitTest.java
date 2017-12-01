@@ -2,10 +2,9 @@ package com.example.tango.mobdev_assignment1;
 
 import android.content.Context;
 import android.test.ServiceTestCase;
+import android.widget.ImageView;
 
 import com.example.tango.mobdev_assignment1.Game.GameBoard;
-import com.example.tango.mobdev_assignment1.Game.PlanetBlockImageView;
-import com.example.tango.mobdev_assignment1.Game.PlanetsEnum;
 
 import org.junit.Test;
 
@@ -37,11 +36,11 @@ public class gameboardUnitTest {
         int startingColumn = 3; // half of 7, zero indexed
         int startingRow = rows - 1; // zero indexed
 
-        PlanetBlockImageView activeBlockImage = new PlanetBlockImageView(context, PlanetsEnum.EARTH);
+        ImageView activeBlockImage = new ImageView(context);
         float velocity = 5;
 
         // implement
-        gameboard.addNewBlock(activeBlockImage);
+        gameboard.addToGameBoard(activeBlockImage);
         assertEquals(gameboard.getActiveCell().getRow(), startingRow);
         assertEquals(gameboard.getActiveImage().getY(), gameboard.getActiveCell().getCellY());
         gameboard.moveBlockY(velocity);
@@ -70,3 +69,200 @@ public class gameboardUnitTest {
     }
 
 }
+        /*
+         * Checks the game board for three adjacent matching planet blocks.
+         * @param cell the starting cell.
+         * @return whether the cell has three matching adjacent planet blocks.
+         */
+    /*
+    protected int checkForThreeMatchingPlanets(GameBoardCell cell)
+    {
+        return cell.traverseForMatches(cell.getPlanet(), 0);
+    }
+
+        int matchingPlanets = 0;
+        GameBoardCell cell2, cell3;
+
+        // 3 down
+        cell2 = cell.getCellDown();
+        if (cell2 != null)
+        {
+            cell3 = cell2.getCellDown();
+
+            if (cell3 != null)
+            {
+                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
+                {
+                    return true;
+                }
+            }
+        }
+
+        // L top
+        cell2 = cell.getCellDown();
+        if (cell2 != null)
+        {
+            cell3 = cell2.getCellRight();
+
+            if (cell3 != null)
+            {
+                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
+                {
+                    return true;
+                }
+            }
+        }
+
+        // L right
+        cell2 = cell.getCellLeft();
+        if (cell2 != null)
+        {
+            cell3 = cell2.getCellUp();
+
+            if (cell3 != null)
+            {
+                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
+                {
+                    return true;
+                }
+            }
+        }
+
+        // rev L top
+        cell2 = cell.getCellDown();
+        if (cell2 != null)
+        {
+            cell3 = cell2.getCellLeft();
+
+            if (cell3 != null)
+            {
+                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
+                {
+                    return true;
+                }
+            }
+        }
+
+        // rev L left
+        cell2 = cell.getCellRight();
+        if (cell2 != null)
+        {
+            cell3 = cell2.getCellUp();
+
+            if (cell3 != null)
+            {
+                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
+                {
+                    return true;
+                }
+            }
+        }
+
+        // r left
+        cell2 = cell.getCellDown();
+        if (cell2 != null)
+        {
+            cell3 = cell.getCellRight();
+
+            if (cell3 != null)
+            {
+                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
+                {
+                    return true;
+                }
+            }
+        }
+
+        // r right
+        cell2 = cell.getCellLeft();
+        if (cell2 != null)
+        {
+            cell3 = cell2.getCellDown();
+
+            if (cell3 != null)
+            {
+                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
+                {
+                    return true;
+                }
+            }
+        }
+
+        // rev r left
+        cell2 = cell.getCellRight();
+        if (cell2 != null)
+        {
+            cell3 = cell2.getCellDown();
+
+            if (cell3 != null)
+            {
+                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
+                {
+                    return true;
+                }
+            }
+        }
+
+        // rev r right
+        cell2 = cell.getCellLeft();
+        if (cell2 != null)
+        {
+            cell3 = cell.getCellDown();
+
+            if (cell3 != null)
+            {
+                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
+                {
+                    return true;
+                }
+            }
+        }
+
+        // flat left
+        cell2 = cell.getCellRight();
+        if (cell2 != null)
+        {
+            cell3 = cell2.getCellRight();
+
+            if (cell3 != null)
+            {
+                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
+                {
+                    return true;
+                }
+            }
+        }
+
+        // flat middle
+        cell2 = cell.getCellLeft();
+        if (cell2 != null)
+        {
+            cell3 = cell.getCellRight();
+
+            if (cell3 != null)
+            {
+                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
+                {
+                    return true;
+                }
+            }
+        }
+
+        // flat right
+        cell2 = cell.getCellLeft();
+        if (cell2 != null)
+        {
+            cell3 = cell2.getCellLeft();
+
+            if (cell3 != null)
+            {
+                if (cell2.getPlanet() == planet && cell3.getPlanet() == planet)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+*/

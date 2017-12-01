@@ -4,41 +4,53 @@ import android.content.Context;
 import android.util.Log;
 import android.widget.ImageView;
 
+import com.google.gson.Gson;
+
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * The GameManager class which manages the game state.
+ * The GameController class which manages the game state.
  * Created by tango on 20/11/2017.
  */
-public class GameManager implements Runnable {
+public class GameController implements Runnable {
 
-    private float gameVelocity = 5;
-    private float direction = 0;
-    private boolean isGameLoopRunning;
+    private final int targetFrameRate = 60;
+    private final int blocksPerLevel = 5;
+    private float gameVelocity;
     private int blocksFallenCount;
-    private int blocksPerLevel = 10;
-    private Thread gameLoopThread;
+    private boolean isGameLoopRunning;
+    private boolean isPaused;
+    private boolean onResume;
+    private Object gameLoopThreadLock;
     private GameViewModel viewModel;
-    private Context gameBoardContext;
+    private Context context;
     private GameBoard gameBoard;
     private PlanetsEnum startingPlanet = PlanetsEnum.EARTH;
     private GameSession gameSession;
 
-
     /**
-     * Constructor for the GameManager class.
+     * Constructor for the GameController class.
      * @param viewModel the view model that abstracts the view implementation.
      */
-    public GameManager(GameViewModel viewModel)
+    public GameController(GameViewModel viewModel)
     {
         this.viewModel = viewModel;
-        this.gameBoard = new GameBoard(this.viewModel.getGameBoardLayoutContext());
+        this.context = this.viewModel.getGameLayoutContext();
+        this.gameBoard = new GameBoard(this.context);
         this.gameSession = new GameSession(this.gameBoard, this.startingPlanet);
-        this.gameBoardContext = this.viewModel.getGameBoardLayoutContext();
-        this.gameLoopThread = new Thread(this);
-        this.gameLoopThread.start();
-        Log.i("GameManager", "Game Manager constructed.");
-        //TODO: resume game session
+        SerializableSessionState serializedSessionState = this.viewModel.loadSessionState();
+        if (serializedSessionState != null)
+        {
+            this.populateGameSessionFromSerializedValues(serializedSessionState);
+        }
+        this.isGameLoopRunning = true;
+        this.isPaused = false;
+        this.onResume = false;
+        this.gameVelocity = 5;
+        this.gameLoopThreadLock = new Object();
+        Thread gameLoopThread = new Thread(this);
+        gameLoopThread.start();
+        Log.i("GameController", "Game Manager constructed.");
     }
 
     /**
@@ -48,32 +60,39 @@ public class GameManager implements Runnable {
     @Override
     public void run()
     {
-        Log.i("GameManager", "Game loop started.");
-        int targetFrameRate = 60;
+        Log.i("GameController", "Game loop started.");
+
         int msPerFrame = 1000 / targetFrameRate;
         long currentTime = System.currentTimeMillis();
         long targetTime = currentTime + msPerFrame;
         boolean isBlockFalling;
-        ImageView activeImage;
-        PlanetsEnum nextPlanet = startingPlanet;
+        ImageView activeImage = new ImageView(this.context);
+        PlanetsEnum nextPlanet = this.startingPlanet;
         float inputX, inputY, calcVelocity;
 
-        isGameLoopRunning = true;
-        while (isGameLoopRunning)
+        while (this.isGameLoopRunning)
         {
             try {
-                // Create new active block
-                activeImage = new ImageView(this.gameBoardContext);
-                activeImage.setImageResource(nextPlanet.getImageResource());
-                this.gameBoard.addToGameBoard(activeImage, nextPlanet);
-                this.viewModel.addImageViewToGameLayout(activeImage);
+                if (this.onResume) // Don't do if resuming
+                {
+                    targetTime = currentTime + msPerFrame;
+                    this.onResume = false;
+                }
+                else
+                {
+                    // Create new active block
+                    activeImage = new ImageView(this.context);
+                    activeImage.setImageResource(nextPlanet.getImageResource());
+                    this.gameBoard.addToGameBoard(activeImage, nextPlanet);
+                    this.viewModel.addImageViewToGameLayout(activeImage);
 
-                // Set next planet and display
-                nextPlanet = this.getRandomPlanet();
-                this.viewModel.setNextPlanet(nextPlanet);
+                    // Set next planet and display
+                    nextPlanet = this.getRandomPlanet();
+                    this.viewModel.setNextPlanet(nextPlanet);
+                }
 
                 isBlockFalling = true;
-                while (isBlockFalling)
+                while (isBlockFalling && !this.isPaused)
                 {
                     currentTime = System.currentTimeMillis();
                     if (currentTime >= targetTime)
@@ -95,56 +114,112 @@ public class GameManager implements Runnable {
                     this.viewModel.drawIndividualImage(this.gameBoard.getActiveCell());
                 }
 
-                // Calculate points scored and add to session score
-                long points = this.gameBoard.calculateScore(this.gameBoard.getActiveCell())
-                        * this.gameSession.getLevel();
-                while (points > 0)
+                if (!this.isPaused)
                 {
-                    boolean isGameBoardInFlux = true;
-                    this.gameSession.addPointsToScore(points);
-                    this.viewModel.setScoreText(this.gameSession.getScore());
-                    points = 0;
-                    while (isGameBoardInFlux)
+                    // Calculate points scored and add to session score
+                    long points = this.gameBoard.calculateScore(this.gameBoard.getActiveCell())
+                            * this.gameSession.getLevel();
+                    while (points > 0)
                     {
-                        isGameBoardInFlux = this.destroyCells(this.gameVelocity);
-                    }
-                    // Check game board for new combinations
-                    GameBoardCell cell;
-                    for (int row = 0; row < this.gameBoard.getRows(); row++)
-                    {
-                        for (int column = 0; column < this.gameBoard.getColumns(); column++) {
-                            cell = this.gameBoard.getCell(column, row);
-                            if (cell.isOccupied())
-                            {
-                                points += this.gameBoard.calculateScore(cell) * this.gameSession.getLevel();
+                        boolean isGameBoardInFlux = true;
+                        this.gameSession.addPointsToScore(points);
+                        this.viewModel.setScoreText(this.gameSession.getScore());
+                        points = 0;
+                        while (isGameBoardInFlux)
+                        {
+                            isGameBoardInFlux = this.destroyCells(this.gameVelocity);
+                        }
+                        // Check game board for new combinations
+                        GameBoardCell cell;
+                        for (int row = 0; row < this.gameBoard.getRows(); row++)
+                        {
+                            for (int column = 0; column < this.gameBoard.getColumns(); column++) {
+                                cell = this.gameBoard.getCell(column, row);
+                                if (cell.isOccupied())
+                                {
+                                    points += this.gameBoard.calculateScore(cell) * this.gameSession.getLevel();
+                                }
                             }
                         }
                     }
+
+                    // Check whether to increment the game level
+                    if (++this.blocksFallenCount % this.blocksPerLevel == 0)
+                    {
+                        this.levelUp();
+                    }
+
+                    if (this.gameBoard.isGameOver())
+                    {
+                        this.isGameLoopRunning = false;
+                        this.viewModel.displayGameOverImage();
+                        Log.i("GameController", "Game Over!");
+                        //TODO: save score to xml
+                        //TODO: navigate to HiScores
+                    }
                 }
 
-                // Check whether to increment the game level
-                if (++this.blocksFallenCount % this.blocksPerLevel == 0)
+                // Wait if game loop has been paused
+                synchronized (this.gameLoopThreadLock)
                 {
-                    this.levelUp();
-                }
-
-                if (this.gameBoard.isGameOver())
-                {
-                    // TODO: last block not always showing in top position
-                    isGameLoopRunning = false;
-                    this.viewModel.displayGameOverImage(this.gameBoardContext);
-                    Log.i("GameManager", "Game Over!");
-                    //TODO: save score to xml
-                    //TODO: navigate to HiScores
+                    while (this.isPaused)
+                    {
+                        try
+                        {
+                            this.gameLoopThreadLock.wait();
+                        }
+                        catch (InterruptedException e) {}
+                    }
                 }
             }
             catch(Exception e)
             {
-                Log.e("GameManager", "Exception Handled! " + e.getMessage(), e);
+                GameBoardCell cell = this.gameBoard.getActiveCell();
+                if (cell != null)
+                {
+                    cell.setDestroyed(true);
+                    this.destroyCell(cell);
+                }
+                Log.e("GameController", "Exception Handled and active cell destroyed! " + e.getMessage(), e);
             }
         }
 
-        Log.i("GameManager", "Game loop ended.");
+        Log.i("GameController", "Game loop ended.");
+    }
+
+    /**
+     * Called by activity onResume(), if game was paused then restarts the game loop from paused state.
+     */
+    public void resumeGameLoop()
+    {
+        this.onResume = true;
+        synchronized (gameLoopThreadLock)
+        {
+            this.isPaused = false;
+            this.gameLoopThreadLock.notifyAll();
+        }
+    }
+
+    /**
+     * Called by activity onPause(), pauses the game loop and saves session state to internal storage.
+     */
+    public void pauseGameLoop()
+    {
+        synchronized (gameLoopThreadLock)
+        {
+            this.isPaused = true;
+            try
+            {
+                SerializableSessionState sessionState = new SerializableSessionState(this.gameSession);
+                Gson gson = new Gson();
+                String sessionStateString = gson.toJson(sessionState, SerializableSessionState.class);
+                this.viewModel.saveSessionState(sessionStateString);
+            }
+            catch(Exception e)
+            {
+                Log.d("GameController", "Failed to save game state.", e);
+            }
+        }
     }
 
     /**
@@ -164,9 +239,7 @@ public class GameManager implements Runnable {
 
                 if (cell.isDestroyed())
                 {
-                    //TODO: do i want to lose reference yet?
-                    this.viewModel.removeImageViewFromGameLayout(cell.getImageView());
-                    this.gameBoard.resetCell(cell);
+                    this.destroyCell(cell);
                 }
 
                 if (cell.isOccupied())
@@ -179,6 +252,21 @@ public class GameManager implements Runnable {
         }
 
         return anyBlockIsStillFalling;
+    }
+
+    /**
+     * Destroys a cell on the game board and removes the image from the game layout.
+     * @param cell the cell to destroy.
+     */
+    private void destroyCell(GameBoardCell cell)
+    {
+        ImageView imageView = cell.getImageView();
+        if (imageView != null)
+        {
+            this.viewModel.removeImageViewFromGameLayout(imageView);
+        }
+
+        this.gameBoard.resetCell(cell);
     }
 
     /**
@@ -197,16 +285,6 @@ public class GameManager implements Runnable {
     }
 
     /**
-     * Creates a new game session.
-     */
-    protected void createNewGameSession()
-    {
-        // TODO: Save old session / scores first?
-        this.gameBoard.CreateEmptyGameBoard();
-        this.gameSession = new GameSession(this.gameBoard, this.startingPlanet);
-    }
-
-    /**
      * Increments the game level and updates the display.
      */
     private void levelUp()
@@ -220,7 +298,48 @@ public class GameManager implements Runnable {
         this.gameSession.setCurrentPlanet(nextPlanet);
         this.viewModel.setNextPlanet(nextPlanet);
 
-        Log.i("GameManager", "Levelled up: " + this.gameSession.getLevel() + ", next planet: " + nextPlanet.toString() + ".");
+        Log.i("GameController", "Levelled up: " + this.gameSession.getLevel() + ", next planet: " + nextPlanet.toString() + ".");
+    }
+
+    /**
+     * Repopuulates the game session and game board from serialized data.
+     * @param serializedSession the simplified game session and gameboard values.
+     */
+    public void populateGameSessionFromSerializedValues(SerializableSessionState serializedSession)
+    {
+        this.gameSession.setCurrentPlanet(PlanetsEnum.getPlanet(serializedSession.getCurrentPlanet()));
+        this.gameSession.addPointsToScore(serializedSession.getScore());
+        this.gameSession.setLevel(serializedSession.getLevel());
+        int[][] planets = serializedSession.getPlanets();
+
+        this.viewModel.setLevelText(Integer.toString(this.gameSession.getLevel()));
+        this.viewModel.setScoreText(this.gameSession.getScore());
+
+        GameBoardCell cell;
+        PlanetsEnum planet;
+        for (int column = 0; column < planets.length; column++)
+        {
+            for (int row = 0; row < planets[0].length; row++)
+            {
+                cell = gameBoard.getCell(column, row);
+                planet = PlanetsEnum.getPlanet(planets[column][row]);
+                if (planet != PlanetsEnum.NULL_PLANET)
+                {
+                    cell.setOccupied(true);
+                    cell.setPlanet(planet);
+                    ImageView imageView = new ImageView(this.context);
+                    imageView.setImageResource(planet.getImageResource());
+                    cell.setImageView(imageView);
+                    this.viewModel.addImageViewToGameLayout(imageView);
+                    this.viewModel.drawIndividualImage(cell);
+                }
+            }
+        }
+
+        GameBoardCell activeCell = this.gameBoard.getCell(serializedSession.getActiveColumn(), serializedSession.getActiveRow());
+        activeCell.setImageX(serializedSession.getActiveImageX());
+        activeCell.setImageY(serializedSession.getActiveImageY());
+        this.gameBoard.setActiveCell(activeCell.getColumn(), activeCell.getRow());
     }
 
     /* Getters and Setters */
@@ -242,15 +361,5 @@ public class GameManager implements Runnable {
     private PlanetsEnum getNextPlanet(PlanetsEnum currentPlanet)
     {
         return PlanetsEnum.getPlanet(currentPlanet.getOrder()+1);
-    }
-
-    /**
-     * Stops the game loop.
-     */
-    public void stopGameLoop()
-    {
-        this.isGameLoopRunning = false;
-        Log.i("GameManager", "Stop game loop called.");
-        //TODO: save session to xml.
     }
 }
