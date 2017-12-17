@@ -36,6 +36,7 @@ public class GameRelativeLayout extends RelativeLayout {
         super(context, attrs, defStyleAttr);
     }
 
+
     /**
      * Sets the game board's static dimensions fields then notifies the activity's LaunchGameLoop
      * method once the display has adjusted for the devices screen dimensions.

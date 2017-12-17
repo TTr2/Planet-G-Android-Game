@@ -11,50 +11,46 @@ import java.io.Serializable;
 
 public enum PlanetsEnum implements Serializable {
 
-    NULL_PLANET(0, R.drawable.null_image, 1, 1, 1, 1, 1),
-    MERCURY(1, R.drawable.mercury, 1, 1, 1, 1, 1),
-    VENUS(2, R.drawable.venus, 1, 1, 1, 1, 1),
-    EARTH(3, R.drawable.earth, 1, 1, 1, 1, 1),
-    MARS(4, R.drawable.mars, 1, 1, 1, 1, 1),
-    JUPITER(5, R.drawable.jupiter, 1, 1, 1, 1, 1),
-    SATURN(6, R.drawable.saturn, 1, 1, 1, 1, 1),
-    URANUS(7, R.drawable.uranus, 1, 1, 1, 1, 1),
-    NEPTUNE(8, R.drawable.neptune, 1, 1, 1, 1, 1);
+    NULL_PLANET(0, R.drawable.null_image, R.drawable.null_image, "1", 1, "1", "1", "1"),
+    MERCURY(1, R.drawable.mercury, R.drawable.mercury_300x300,  "0.330", 0.38f, "4,878", "57,900,000", "88 days"),
+    VENUS(2, R.drawable.venus, R.drawable.venus_300x300, "4.87", 0.9f, "12,104", "108,160,000", "224 days"),
+    EARTH(3, R.drawable.earth, R.drawable.earth_300x300, "5.97", 1, "12,756", "149,600,000", "365.25 days"),
+    MARS(4, R.drawable.mars, R.drawable.mars_300x300, "0.642", 0.38f, "6,794", "227,936,640", "687 days"),
+    JUPITER(5, R.drawable.jupiter, R.drawable.jupiter_300x300, "1,898", 2.64f, "142,984", "778,369,000", "11.86 years"),
+    SATURN(6, R.drawable.saturn, R.drawable.saturn_300x300, "568", 1.16f, "120,536", "1,427,034,000", "29 years"),
+    URANUS(7, R.drawable.uranus, R.drawable.uranus_300x300, "86.8", 1.11f, "51,118", "2,870,658,186", "84 years"),
+    NEPTUNE(8, R.drawable.neptune, R.drawable.neptune_300x300, "102", 1.21f, "49,532", "4,496,976,000", "164.8 years");
 
     private int order;
-    private int drawableId;
-    private float mass;
+    private int smallDrawableId;
+    private int largeDrawableId;
+    private String mass;
     private float gravity;
-    private long diameter;
-    private long distanceFromSun;
-    private long distanceFromEarth;
+    private String diameter;
+    private String distanceFromSun;
+    private String orbit;
 
-    PlanetsEnum(int order, int drawableId, float mass, float gravity, long diameter, long distanceFromSun,
-                long distanceFromEarth)
+    PlanetsEnum(int order, int smallDrawableId, int largeDrawableId, String mass, float gravity,
+                String diameter, String distanceFromSun, String orbit)
     {
         this.order = order;
-        this.drawableId = drawableId;
+        this.smallDrawableId = smallDrawableId;
+        this.largeDrawableId = largeDrawableId;
         this.mass = mass;
         this.gravity = gravity;
         this.diameter = diameter;
         this.distanceFromSun = distanceFromSun;
-        this.distanceFromEarth = distanceFromEarth;
-    }
-
-    /**
-     * Default constructor for serializing.
-     */
-    PlanetsEnum()
-    {
+        this.orbit = orbit;
     }
 
     public int getOrder() { return order; }
-    public int getImageResource() { return drawableId; }
-    public float getMass() { return mass; }
+    public int getSmallImageResource() { return smallDrawableId; }
+    public int getLargeImageResource() { return largeDrawableId; }
+    public String getMass() { return mass; }
     public float getGravity() { return gravity; }
-    public long getDiameter() { return diameter; }
-    public long getDistanceFromSun() { return distanceFromSun; }
-    public long getDistanceFromEarth() { return distanceFromEarth; }
+    public String getDiameter() { return diameter; }
+    public String getDistanceFromSun() { return distanceFromSun; }
+    public String getOrbit() { return orbit; }
     public static PlanetsEnum getPlanet(int index)
     {
         if (index > PlanetsEnum.values().length)

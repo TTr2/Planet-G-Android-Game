@@ -6,10 +6,10 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageButton;
 
+import com.example.tango.mobdev_assignment1.Fragments.Settings;
 import com.example.tango.mobdev_assignment1.R;
-
-import java.io.File;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -19,7 +19,12 @@ public class MainActivity extends AppCompatActivity {
     private Button playGameButton;
     private Button hiScoresButton;
     private Button planetStatsButton;
+    private ImageButton settingsButton;
 
+    /**
+     * Called when activity os created.
+     * @param savedInstanceState an instance saved state bundle.
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -35,20 +40,9 @@ public class MainActivity extends AppCompatActivity {
         this.playGameButton = (Button) findViewById(R.id.PlayGameButton);
         this.hiScoresButton = (Button) findViewById(R.id.HiScoresButton);
         this.planetStatsButton = (Button) findViewById(R.id.PlanetStatsButton);
+        this.settingsButton = (ImageButton) findViewById(R.id.SettingsButton);
 
-        try {
-            String[] files = this.fileList();
-            for (String filename : files)
-            {
-                if (filename == MainActivity.sessionStateFileName)
-                {
-                    this.playGameButton.setText("RESUME");
-                }
-            }
-        }
-        catch (Exception e) {
-            Log.i("MainActivity", "No saved session state found.");
-        }
+        this.checkForSavedSession();
 
         playGameButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -71,7 +65,54 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(planetStatsIntent);
             }
         });
+        settingsButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                Intent settingsIntent = new Intent(MainActivity.this, Settings.class);
+                startActivity(settingsIntent);
+
+            }
+        });
     }
 
+    /**
+     * Called when activity is resumed.
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        this.checkForSavedSession();
+    }
 
+    /**
+     * Checks the app's file directory for a saved session file and sets the play game text.
+     */
+    private void checkForSavedSession()
+    {
+        try {
+            boolean savedSessionFound = false;
+            String[] files = this.fileList();
+
+            for (String filename : files)
+            {
+                if (filename.equals(MainActivity.sessionStateFileName))
+                {
+                    savedSessionFound = true;
+                }
+            }
+
+            if (savedSessionFound)
+            {
+                this.playGameButton.setText("RESUME");
+            }
+            else
+            {
+                this.playGameButton.setText("NEW GAME");
+            }
+        }
+        catch (Exception e) {
+            Log.i("MainActivity", "No saved session state found.");
+        }
+    }
 }

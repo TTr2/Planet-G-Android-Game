@@ -2,7 +2,6 @@ package com.example.tango.mobdev_assignment1.Game;
 
 import android.content.Context;
 import android.util.Log;
-import android.widget.ImageView;
 
 import com.google.gson.Gson;
 
@@ -15,7 +14,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class GameController implements Runnable {
 
     private final int targetFrameRate = 60;
-    private final int blocksPerLevel = 5;
+    private final int blocksPerLevel = 4;
     private float gameVelocity;
     private int blocksFallenCount;
     private boolean isGameLoopRunning;
@@ -36,16 +35,21 @@ public class GameController implements Runnable {
     {
         this.viewModel = viewModel;
         this.context = this.viewModel.getGameLayoutContext();
-        this.gameBoard = new GameBoard(this.context);
-        this.gameSession = new GameSession(this.gameBoard, this.startingPlanet);
+        this.isGameLoopRunning = true;
+        this.isPaused = false;
+        this.onResume = false;
         SerializableSessionState serializedSessionState = this.viewModel.loadSessionState();
+        int columns = serializedSessionState == null
+                ? this.viewModel.getNumberOfColumnsSetting()
+                : serializedSessionState.getPlanets().length;
+        this.gameBoard = new GameBoard(this.context, columns);
+        this.viewModel.addGameBoardToLayout(this.gameBoard);
+        this.gameSession = new GameSession(this.gameBoard);
+
         if (serializedSessionState != null)
         {
             this.populateGameSessionFromSerializedValues(serializedSessionState);
         }
-        this.isGameLoopRunning = true;
-        this.isPaused = false;
-        this.onResume = false;
         this.gameVelocity = 5;
         this.gameLoopThreadLock = new Object();
         Thread gameLoopThread = new Thread(this);
@@ -65,14 +69,16 @@ public class GameController implements Runnable {
         int msPerFrame = 1000 / targetFrameRate;
         long currentTime = System.currentTimeMillis();
         long targetTime = currentTime + msPerFrame;
-        boolean isBlockFalling;
-        ImageView activeImage = new ImageView(this.context);
+        boolean isBlockFalling, hasChangedColumn;
         PlanetsEnum nextPlanet = this.startingPlanet;
-        float inputX, inputY, calcVelocity;
+        float inputX, inputY = 0, velocity = this.gameVelocity;
+        GameBoardCell tmpCell;
+        this.viewModel.playBackgroundMusic();
 
         while (this.isGameLoopRunning)
         {
             try {
+
                 if (this.onResume) // Don't do if resuming
                 {
                     targetTime = currentTime + msPerFrame;
@@ -81,17 +87,19 @@ public class GameController implements Runnable {
                 else
                 {
                     // Create new active block
-                    activeImage = new ImageView(this.context);
-                    activeImage.setImageResource(nextPlanet.getImageResource());
-                    this.gameBoard.addToGameBoard(activeImage, nextPlanet);
-                    this.viewModel.addImageViewToGameLayout(activeImage);
+                    this.gameBoard.addToGameBoard(nextPlanet);
 
                     // Set next planet and display
                     nextPlanet = this.getRandomPlanet();
+                    this.gameSession.setNextPlanet(nextPlanet);
                     this.viewModel.setNextPlanet(nextPlanet);
                 }
 
+                this.viewModel.updateCellOnUiThread(this.gameBoard.getActiveCell());
+
                 isBlockFalling = true;
+                this.gameBoard.resetDirection();
+
                 while (isBlockFalling && !this.isPaused)
                 {
                     currentTime = System.currentTimeMillis();
@@ -99,35 +107,49 @@ public class GameController implements Runnable {
                     {
                         targetTime = (currentTime + msPerFrame) - (currentTime-targetTime);
                         inputX = this.viewModel.getHorizontalMotion();
-                        // TODO: gotta incorporate gravity eitehr with sensor or G of planet
-                        inputY = this.viewModel.getVerticalMotion();
 
-                        //TODO: decide if going to use inputY at all!
-                        calcVelocity = this.calculateVelocity(inputY); // take gameVelocity / planet / inputY
-                        calcVelocity = this.gameVelocity; //TODO: delete once velocity calculation done
-                        isBlockFalling = this.gameBoard.moveBlockY(this.gameBoard.getActiveCell(), calcVelocity);
-                        isBlockFalling = this.gameBoard.moveBlockX(inputX, isBlockFalling);
-                        // TODO: consider reducing number of horizontal moves per second
-                            // TODO: calculate whether gravity guess is correct (+/-)
+                        // Move block on Y and X axis, store current active cell for refresh on UI thread.
+                        tmpCell = this.gameBoard.getActiveCell();
+                        isBlockFalling = this.gameBoard.moveBlockY(tmpCell, velocity + tmpCell.getPlanet().getGravity());
+                        this.viewModel.updateCellOnUiThread(tmpCell);
+
+                        tmpCell = this.gameBoard.getActiveCell();
+                        hasChangedColumn = this.gameBoard.moveBlockX(inputX);
+                        if (hasChangedColumn)
+                        {
+                            this.viewModel.vibrate(25);
+                            this.viewModel.updateCellOnUiThread(tmpCell);
+                            tmpCell = this.gameBoard.getActiveCell();
+                        }
+                        isBlockFalling = this.gameBoard.moveBlockY(this.gameBoard.getActiveCell(), 0);
+
+                        this.viewModel.updateCellOnUiThread(tmpCell);
                     }
-
-                    this.viewModel.drawIndividualImage(this.gameBoard.getActiveCell());
                 }
 
                 if (!this.isPaused)
                 {
-                    // Calculate points scored and add to session score
-                    long points = this.gameBoard.calculateScore(this.gameBoard.getActiveCell())
+                    // Calculate points for landing block and add to session score
+                    int pointsForLanding = this.gameBoard.calculateNewBlockScore(this.gameSession.getLevel());
+                    this.viewModel.makeToastForPoints(pointsForLanding);
+                    this.gameSession.addPointsToScore(pointsForLanding);
+                    this.viewModel.setScoreText(this.gameSession.getScore());
+
+                    // Calculate points if blocks destroyed.
+                    long points =  this.gameBoard.calculateMultiplierScore(this.gameBoard.getActiveCell())
                             * this.gameSession.getLevel();
                     while (points > 0)
                     {
                         boolean isGameBoardInFlux = true;
+                        this.viewModel.makeToastForPoints(points);
+                        this.viewModel.playActionSound();
                         this.gameSession.addPointsToScore(points);
                         this.viewModel.setScoreText(this.gameSession.getScore());
                         points = 0;
                         while (isGameBoardInFlux)
                         {
-                            isGameBoardInFlux = this.destroyCells(this.gameVelocity);
+                            this.viewModel.vibrate(200);
+                            isGameBoardInFlux = this.destroyCells(1);
                         }
                         // Check game board for new combinations
                         GameBoardCell cell;
@@ -137,7 +159,7 @@ public class GameController implements Runnable {
                                 cell = this.gameBoard.getCell(column, row);
                                 if (cell.isOccupied())
                                 {
-                                    points += this.gameBoard.calculateScore(cell) * this.gameSession.getLevel();
+                                    points += this.gameBoard.calculateMultiplierScore(cell) * this.gameSession.getLevel();
                                 }
                             }
                         }
@@ -152,10 +174,9 @@ public class GameController implements Runnable {
                     if (this.gameBoard.isGameOver())
                     {
                         this.isGameLoopRunning = false;
-                        this.viewModel.displayGameOverImage();
+                        this.viewModel.gameOverRoutine(this.gameSession.getScore(),
+                                this.gameSession.getLevel());
                         Log.i("GameController", "Game Over!");
-                        //TODO: save score to xml
-                        //TODO: navigate to HiScores
                     }
                 }
 
@@ -188,11 +209,16 @@ public class GameController implements Runnable {
     }
 
     /**
-     * Called by activity onResume(), if game was paused then restarts the game loop from paused state.
+     * Called by activity onResume(), if game was paused then repopulates the from paused state.
      */
     public void resumeGameLoop()
     {
         this.onResume = true;
+        SerializableSessionState serializedSessionState = this.viewModel.loadSessionState();
+        if (serializedSessionState != null)
+        {
+            this.populateGameSessionFromSerializedValues(serializedSessionState);
+        }
         synchronized (gameLoopThreadLock)
         {
             this.isPaused = false;
@@ -208,16 +234,21 @@ public class GameController implements Runnable {
         synchronized (gameLoopThreadLock)
         {
             this.isPaused = true;
-            try
+            this.viewModel.pauseBackgroundMusic();
+            if (this.isGameLoopRunning)
             {
-                SerializableSessionState sessionState = new SerializableSessionState(this.gameSession);
-                Gson gson = new Gson();
-                String sessionStateString = gson.toJson(sessionState, SerializableSessionState.class);
-                this.viewModel.saveSessionState(sessionStateString);
-            }
-            catch(Exception e)
-            {
-                Log.d("GameController", "Failed to save game state.", e);
+                try
+                {
+                    SerializableSessionState sessionState = new SerializableSessionState(this.gameSession);
+                    Gson gson = new Gson();
+                    String sessionStateString = gson.toJson(sessionState, SerializableSessionState.class);
+                    this.viewModel.saveSessionState(sessionStateString);
+                    this.viewModel.wipeGameBoardClean(this.gameBoard);
+                }
+                catch(Exception e)
+                {
+                    Log.d("GameController", "Failed to save game state.", e);
+                }
             }
         }
     }
@@ -246,7 +277,7 @@ public class GameController implements Runnable {
                 {
                     thisBlockIsStillFalling = this.gameBoard.moveBlockY(cell, velocity);
                     anyBlockIsStillFalling = thisBlockIsStillFalling ? true : anyBlockIsStillFalling;
-                    this.viewModel.drawIndividualImage(cell);
+                    this.viewModel.updateCellOnUiThread(cell);
                 }
             }
         }
@@ -255,33 +286,13 @@ public class GameController implements Runnable {
     }
 
     /**
-     * Destroys a cell on the game board and removes the image from the game layout.
+     * Destroys a cell on the game board by replacing the image with the null image.
      * @param cell the cell to destroy.
      */
     private void destroyCell(GameBoardCell cell)
     {
-        ImageView imageView = cell.getImageView();
-        if (imageView != null)
-        {
-            this.viewModel.removeImageViewFromGameLayout(imageView);
-        }
-
         this.gameBoard.resetCell(cell);
-    }
-
-    /**
-     * Calculates the velocity of the falling block based on the gravity of the current and active
-     * planets, the level and the input from the player.
-     * @param inputY the input from the player.
-     * @return the calculated velocity.
-     */
-    private float calculateVelocity(float inputY) {
-
-        float calcVelocity = inputY;
-        //TODO: calculate velocity. Consider some getters (pretty convoluted) or different class.
-        // TODO: retain previous value to check for change?
-        // TODO: need to calibrate/reset at some point
-        return calcVelocity;
+        this.viewModel.updateCellOnUiThread(cell);
     }
 
     /**
@@ -292,22 +303,16 @@ public class GameController implements Runnable {
         this.gameSession.incrementLevel();
         this.gameVelocity += this.gameSession.getLevel() % 5 == 0 ? 1 : 0;
         this.viewModel.setLevelText(Integer.toString(this.gameSession.getLevel()));
-
-        // Select a new current planet
-        PlanetsEnum nextPlanet = this.getNextPlanet(this.gameSession.getCurrentPlanet());
-        this.gameSession.setCurrentPlanet(nextPlanet);
-        this.viewModel.setNextPlanet(nextPlanet);
-
-        Log.i("GameController", "Levelled up: " + this.gameSession.getLevel() + ", next planet: " + nextPlanet.toString() + ".");
+        Log.i("GameController", "Levelled up: " + this.gameSession.getLevel() + ".");
     }
 
     /**
-     * Repopuulates the game session and game board from serialized data.
+     * Repopulates the game session and game board from serialized data.
      * @param serializedSession the simplified game session and gameboard values.
      */
     public void populateGameSessionFromSerializedValues(SerializableSessionState serializedSession)
     {
-        this.gameSession.setCurrentPlanet(PlanetsEnum.getPlanet(serializedSession.getCurrentPlanet()));
+        this.gameSession.setNextPlanet(PlanetsEnum.getPlanet(serializedSession.getNextPlanet()));
         this.gameSession.addPointsToScore(serializedSession.getScore());
         this.gameSession.setLevel(serializedSession.getLevel());
         int[][] planets = serializedSession.getPlanets();
@@ -321,17 +326,14 @@ public class GameController implements Runnable {
         {
             for (int row = 0; row < planets[0].length; row++)
             {
-                cell = gameBoard.getCell(column, row);
+                cell = this.gameBoard.getCell(column, row);
                 planet = PlanetsEnum.getPlanet(planets[column][row]);
                 if (planet != PlanetsEnum.NULL_PLANET)
                 {
                     cell.setOccupied(true);
                     cell.setPlanet(planet);
-                    ImageView imageView = new ImageView(this.context);
-                    imageView.setImageResource(planet.getImageResource());
-                    cell.setImageView(imageView);
-                    this.viewModel.addImageViewToGameLayout(imageView);
-                    this.viewModel.drawIndividualImage(cell);
+                    cell.setCellBitmap(this.gameBoard.getPlanetBitmap(planet));
+                    this.viewModel.updateCellOnUiThread(cell);
                 }
             }
         }
@@ -339,7 +341,9 @@ public class GameController implements Runnable {
         GameBoardCell activeCell = this.gameBoard.getCell(serializedSession.getActiveColumn(), serializedSession.getActiveRow());
         activeCell.setImageX(serializedSession.getActiveImageX());
         activeCell.setImageY(serializedSession.getActiveImageY());
+        this.viewModel.updateCellOnUiThread(activeCell);
         this.gameBoard.setActiveCell(activeCell.getColumn(), activeCell.getRow());
+        this.onResume = true;
     }
 
     /* Getters and Setters */

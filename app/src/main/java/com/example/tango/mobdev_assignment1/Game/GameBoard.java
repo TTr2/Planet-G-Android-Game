@@ -1,9 +1,12 @@
 package com.example.tango.mobdev_assignment1.Game;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.util.Log;
 import android.widget.ImageView;
-import java.io.Serializable;
+
+import com.example.tango.mobdev_assignment1.R;
 
 /**
  * the game board class represents the playable game area, composed of game board cells that contain
@@ -12,27 +15,30 @@ import java.io.Serializable;
  * Created by tango on 21/11/2017.
  */
 
-public class GameBoard implements Serializable {
+public class GameBoard {
 
+    private Context context;
     private static int viewWidth;
     private static int viewHeight;
     private int cellSize;
-    private int columns = 7;
+    private int columns;
     private int rows;
     private int startingColumn;
     private int startingRow;
     private float direction;
     private GameBoardCell[][] gameBoardCells;
     private GameBoardCell activeCell;
-    private transient ImageView nullImageView;
+    private Bitmap[] planetBitmaps;
 
     /**
      * Constructor for GameBoard object, it is instantiated by the GameController after the
      * GameSurfaceView's onSizeChanged() event is called when activity is created.
-     * @param context the GameSurfaceView context.
+     * @param context the Game layout context.
      */
-    public GameBoard(Context context)
+    public GameBoard(Context context, int columns)
     {
+        this.context = context;
+        this.columns = columns;
         if (viewWidth == 0 && viewHeight == 0)
         {
             viewWidth = 1080;
@@ -40,16 +46,41 @@ public class GameBoard implements Serializable {
         }
         this.cellSize = GameBoard.viewWidth / this.columns;
         this.rows = GameBoard.viewHeight / this.cellSize;
-        this.startingColumn = 3; // half of 7, zero indexed
+        this.startingColumn = this.columns / 2; // half of columns, zero indexed
         this.startingRow = this.rows - 1; // zero indexed
-        this.nullImageView= new NullImageView(context);
+        this.planetBitmaps = new Bitmap[]{
+            Bitmap.createScaledBitmap(
+                    BitmapFactory.decodeResource(context.getResources(), R.drawable.null_image),
+                    this.cellSize, this.cellSize, true),
+            Bitmap.createScaledBitmap(
+                    BitmapFactory.decodeResource(context.getResources(), R.drawable.mercury),
+                    this.cellSize, this.cellSize, true),
+            Bitmap.createScaledBitmap(
+                    BitmapFactory.decodeResource(context.getResources(), R.drawable.venus),
+                    this.cellSize, this.cellSize, true),
+            Bitmap.createScaledBitmap(
+                    BitmapFactory.decodeResource(context.getResources(), R.drawable.earth),
+                    this.cellSize, this.cellSize, true),
+            Bitmap.createScaledBitmap(
+                    BitmapFactory.decodeResource(context.getResources(), R.drawable.mars),
+                    this.cellSize, this.cellSize, true),
+            Bitmap.createScaledBitmap(
+                    BitmapFactory.decodeResource(context.getResources(), R.drawable.jupiter),
+                    this.cellSize, this.cellSize, true),
+            Bitmap.createScaledBitmap(
+                    BitmapFactory.decodeResource(context.getResources(), R.drawable.saturn),
+                    this.cellSize, this.cellSize, true),
+            Bitmap.createScaledBitmap(
+                    BitmapFactory.decodeResource(context.getResources(), R.drawable.uranus),
+                    this.cellSize, this.cellSize, true),
+            Bitmap.createScaledBitmap(
+                    BitmapFactory.decodeResource(context.getResources(), R.drawable.neptune),
+                    this.cellSize, this.cellSize, true)};
         this.CreateEmptyGameBoard();
+        this.activeCell = this.getCell(startingColumn, startingRow);
     }
 
-    /**
-     * Default constructor for serializing.
-     */
-    public GameBoard() { }
+
 
     /**
      * Generates and returns a new 2D array of GameBoardCells, configured using the fields in the
@@ -66,8 +97,8 @@ public class GameBoard implements Serializable {
             y = GameBoard.viewHeight - this.cellSize;
 
             for (int row = 0; row < this.rows; row++) {
-                newGameBoard[column][row] = new GameBoardCell(column, row, this.cellSize, x, y,
-                        this.nullImageView, PlanetsEnum.NULL_PLANET);
+                newGameBoard[column][row] = new GameBoardCell(this.context, column, row,
+                        this.cellSize, x, y, this.planetBitmaps[0], PlanetsEnum.NULL_PLANET);
 
                 // Set the y position to use for the next cell upwards.
                 y -= this.cellSize;
@@ -107,16 +138,19 @@ public class GameBoard implements Serializable {
     }
 
     /**
-     * Adds a new block to the game board in starting cell.
-     * @param activeImage the active planet ImageView.
+     * Sets the starting cell as the new block.
+     * @param planet the active planet of the new block.
      */
-    public void addToGameBoard(ImageView activeImage, PlanetsEnum planet)
+    public void addToGameBoard(PlanetsEnum planet)
     {
         this.activeCell = this.getCell(startingColumn, startingRow);
-        this.activeCell.setPlanet(planet);
-        this.activeCell.setImageView(activeImage);
         this.activeCell.setOccupied(true);
-        Log.d("GameBoard", "Added new block: active cell=" + this.activeCell.getColumn() + "," + this.activeCell.getRow() + ", image pos= " + this.activeCell.getImageX() + "," + this.activeCell.getImageY() + ".");
+        this.activeCell.setPlanet(planet);
+        this.activeCell.setCellBitmap(this.planetBitmaps[planet.getOrder()]);
+        this.activeCell.setImageX(this.activeCell.getCellX());
+        this.activeCell.setImageY(this.activeCell.getCellY());
+
+        Log.d("GameBoard", "Added new block: active cell=" + this.activeCell.toString() +".");
     }
 
     /**
@@ -163,7 +197,7 @@ public class GameBoard implements Serializable {
                     isBlockFalling = false;
                 }
             }
-            else // Proceed but check if change cell
+            else // Proceed but check if changed cell
             {
                 cell.setImageY(targetTopEdgeY);
                 isBlockFalling = true;
@@ -177,6 +211,7 @@ public class GameBoard implements Serializable {
                     {
                         this.activeCell = this.switchCells(cell, cellBelow);
                     }
+                    // This is for after destroying planets
                     else
                     {
                         this.switchCells(cell, cellBelow);
@@ -188,40 +223,37 @@ public class GameBoard implements Serializable {
         return isBlockFalling;
     }
 
-
     /**
      * Moves the falling block horizontally if possible.
      * @param inputX the direction received from the device sensor.
-     * @param isBlockFalling whether the block is falling.
-     * @return whether the block is still falling.
+     * @return whether the block has moved to a different column.
      */
-    protected boolean moveBlockX(float inputX, boolean isBlockFalling) {
-        int stoppingPointX;
-        float projectedX;
-        long waitTime = 500;
-        long endTime;
+    protected boolean moveBlockX(float inputX) {
         int activeColumn;
         int neighbouringColumn;
-        float tolerance = 0.25f;
-        float factor = 1.5f;
+        boolean hasChangedColumn = false;
 
-
-
-        this.direction += (inputX * -1) * factor;
-
-        if (Math.abs(this.direction) > this.cellSize)
+        // Filter out background signal and invert direction
+        this.direction += ((inputX - 0.125) * -1);
+        if (Math.abs(this.direction) >= this.cellSize / 2)
         {
             activeColumn = this.activeCell.getColumn();
 
             // Heading left to right
             if (this.direction > 0 && activeColumn < this.columns - 1)
+            {
                 neighbouringColumn = activeColumn + 1;
+            }
             // Heading right to left
             else if (this.direction < 0 && activeColumn > 0)
+            {
                 neighbouringColumn = activeColumn - 1;
+            }
             // Can't change column
             else
+            {
                 neighbouringColumn = activeColumn;
+            }
 
             // If block not in extreme left or right column
             if (neighbouringColumn != activeColumn)
@@ -232,117 +264,16 @@ public class GameBoard implements Serializable {
                 if (!neighbourCell.isOccupied())
                 {
                     this.activeCell = this.switchCells(this.activeCell, neighbourCell);
+
                     this.activeCell.setImageX(this.activeCell.getCellX());
-                    this.direction = 0;
-                    isBlockFalling = this.moveBlockY(this.activeCell, 0);
+                    this.resetDirection();
+                    hasChangedColumn = true;
                 }
             }
         }
 
-         return isBlockFalling;
+         return hasChangedColumn;
     }
-
-        //TODO: think about this more - snap to majority column if isBlockFalling = false?
-/*
-        // Ignore noise above/below tolerance threshold
-        if (Math.abs(inputX) > tolerance) {
-            float targetLeftEdgeX = this.activeCell.getCellX() + inputX;
-            float targetRightEdgeX = targetLeftEdgeX + this.cellSize;
-            GameBoardCell neighbourCell;
-
-            // Invert input direction so that tipping the screen moves blocks 'down' not 'up'
-            float direction = (inputX * -1);
-
-            if (direction > tolerance)
-            {
-                neighbourCell = this.activeCell.getCellRight();
-                if (neighbourCell != null)
-                {
-                    if (neighbourCell.isOccupied())
-                    {
-                        stoppingPointX = neighbourCell.getCellX();
-                        if (targetRightEdgeX < stoppingPointX)
-                        {
-                            this.activeCell.setImageX(targetLeftEdgeX);
-                        }
-                        else
-                        {
-                            this.activeCell.setImageX(stoppingPointX - this.cellSize);
-                        }
-
-                    }
-                    else
-                    {
-                        this.activeCell.setImageX(targetLeftEdgeX);
-
-                        // check for switch?
-                    }
-                }
-            }
-            else if (direction < (tolerance * -1))
-            {
-                neighbourCell = this.activeCell.getCellLeft();
-                if (neighbourCell.isOccupied())
-                {
-                    stoppingPointX = neighbourCell.getCellX() + this.cellSize;
-                }
-                else
-                {
-                    this.activeCell.setImageX(targetLeftEdgeX);
-
-                    // check for switch?
-                }
-            }
-        }
-
-        return this.moveBlockY(this.activeCell, 0);
-    }
-*/
-/*
-                    && activeColumn < this.columns - 1)
-                neighbouringColumn = activeColumn + 1;
-                // Heading right to left
-            else if (direction < 0 && activeColumn > 0)
-                neighbouringColumn = activeColumn - 1;
-                // Can't change column
-            else
-                neighbouringColumn = activeColumn;
-
-
-
-
-            if (Math.abs(this.direction) > this.cellSize)
-            {
-                activeColumn = this.activeCell.getColumn();
-
-                // Heading left to right
-                if (direction > 0 && activeColumn < this.columns - 1)
-                    neighbouringColumn = activeColumn + 1;
-                // Heading right to left
-                else if (direction < 0 && activeColumn > 0)
-                    neighbouringColumn = activeColumn - 1;
-                // Can't change column
-                else
-                    neighbouringColumn = activeColumn;
-
-                // If block not in extreme left or right column
-                if (neighbouringColumn != activeColumn)
-                {
-                    GameBoardCell neighbourCell = this.getCell(neighbouringColumn,
-                            this.activeCell.getRow());
-
-                    if (!neighbourCell.isOccupied())
-                    {
-                        this.activeCell = this.switchCells(this.activeCell, neighbourCell);
-                        this.activeCell.setImageX(this.activeCell.getCellX());
-                        this.direction = 0;
-                        isBlockFalling = this.moveBlockY(this.activeCell, 0);
-                    }
-                }
-            }
-*/
-
-
 
     /**
      * Switches the contents of two adjacent cells on the game board.
@@ -357,15 +288,15 @@ public class GameBoard implements Serializable {
             if (!destinationCell.isOccupied())
             {
                 Log.d("GameBoard", "Switching cell: active cell=" + sourceCell.getColumn() + ","
-                        + sourceCell.getRow() + ", image pos= " + this.activeCell.getImageX() + ","
-                        + this.activeCell.getImageY() + ".\n Destination cell="
+                        + sourceCell.getRow() + ", image pos= " + sourceCell.getImageX() + ","
+                        + sourceCell.getImageY() + ".\n Destination cell="
                         + destinationCell.getColumn() + "," + destinationCell.getRow()
-                        + ", image pos= " + destinationCell.getImageView().getX() + ","
-                        + destinationCell.getImageView().getY() + ".");
+                        + ", image pos= " + destinationCell.getX() + ","
+                        + destinationCell.getY() + ".");
 
                 // Update destination cell with active image and coordinates
                 destinationCell.setPlanet(sourceCell.getPlanet());
-                destinationCell.setImageView(sourceCell.getImageView());
+                destinationCell.setCellBitmap(sourceCell.getCellBitmap());
                 destinationCell.setImageX(sourceCell.getImageX());
                 destinationCell.setImageY(sourceCell.getImageY());
                 destinationCell.setOccupied(true);
@@ -373,7 +304,7 @@ public class GameBoard implements Serializable {
 
                 // Reset the soon to be inactive cell
                 sourceCell.setPlanet(PlanetsEnum.NULL_PLANET);
-                sourceCell.setImageView(this.nullImageView);
+                sourceCell.setCellBitmap(this.planetBitmaps[0]);
                 sourceCell.setImageX(sourceCell.getCellX());
                 sourceCell.setImageY(sourceCell.getCellY());
                 sourceCell.setOccupied(false);
@@ -389,11 +320,21 @@ public class GameBoard implements Serializable {
     }
 
     /**
+     * Calculates the points for landing a block based on the level.
+     * @param level the game session level.
+     * @return the calculated score for landing a block.
+     */
+    protected int calculateNewBlockScore(int level)
+    {
+        return this.activeCell.getPointsPerBlock() * level;
+    }
+
+    /**
      * Checks if fallen block has scored then calculates the score for any destroyed blocks.
      * @param cell the starting game board cell.
      * @return the calculated score.
      */
-    protected long calculateScore(GameBoardCell cell)
+    protected long calculateMultiplierScore(GameBoardCell cell)
     {
         int matchingPlanets = cell.traverseForMatches(cell.getPlanet(), 0);
         if (matchingPlanets == 1)
@@ -435,39 +376,24 @@ public class GameBoard implements Serializable {
     }
 
     /**
-     * Resets the provided cell to an unoccupied cell containing a NullImageView.
+     * Resets the provided cell to an unoccupied cell containing a transparent bitmap.
      * @param cell the cell to reset.
      */
     public void resetCell(GameBoardCell cell) {
-        cell.setImageView(this.nullImageView);
+        cell.setCellBitmap(this.planetBitmaps[0]);
         cell.setOccupied(false);
         cell.setVisited(false);
         cell.setDestroyed(false);
+        cell.setPlanet(PlanetsEnum.NULL_PLANET);
+        Log.d("GameBoard", "Reset Cell: " + cell.toString());
     }
 
     /**
-     * Resets all destroyed cells to empty cells.
+     * Reset the cumulative direction to zero.
      */
-    protected void destroyCells()
+    protected void resetDirection()
     {
-        GameBoardCell cell;
-        for (int row = 0; row < this.rows; row++)
-        {
-            for (int column = 0; column < this.columns; column++)
-            {
-                cell = this.getCell(column, row);
-                if (cell.isDestroyed())
-                {
-                    //TODO: do i want to lose reference yet?
-                    cell.setImageView(this.nullImageView);
-                    cell.setOccupied(false);
-                    cell.setVisited(false);
-                    cell.setDestroyed(false);
-                }
-            }
-        }
-
-        Log.d("GameBoard", "Destroying cells.");
+        this.direction = 0;
     }
 
     /**
@@ -489,6 +415,15 @@ public class GameBoard implements Serializable {
     protected void setActiveCell(int column, int row)
     {
         this.activeCell = this.getCell(column, row);
+        Log.d("GameBoard", "SetActiveCell " + activeCell.toString());
+    }
+
+    /**
+     * Gets the array of cells on the gameboard.
+     * @return
+     */
+    public GameBoardCell[][] getGameBoardCells() {
+        return gameBoardCells;
     }
 
     /**
@@ -524,6 +459,13 @@ public class GameBoard implements Serializable {
     protected int getRows() { return rows; }
 
     /**
+     * Gets the planets corresponding bitmap.
+     * @param planet the planet.
+     * @return the planets (scaled) bitmap.
+     */
+    public Bitmap getPlanetBitmap(PlanetsEnum planet) { return this.planetBitmaps[planet.getOrder()];}
+
+    /**
      * Whether the last placed block is in the starting position and no more blocks can be placed.
      * @return Whether the last placed block is in the starting position and no more blocks can be
      * placed.
@@ -534,14 +476,5 @@ public class GameBoard implements Serializable {
                 && this.activeCell.getColumn() == this.startingColumn
                 && this.activeCell.getCellDown() != null
                 && this.activeCell.getCellDown().isOccupied();
-    }
-
-    /**
-     * Re-instantiates the NullImageView object with the context from the resumed layout.
-     * @param context the activity context.
-     */
-    public void refreshNullImageViewContext(Context context)
-    {
-        this.nullImageView = new NullImageView(context);
     }
 }

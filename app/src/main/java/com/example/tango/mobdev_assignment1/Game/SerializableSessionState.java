@@ -9,7 +9,7 @@ import java.io.Serializable;
  */
 public class SerializableSessionState implements Serializable {
 
-    private int currentPlanet;
+    private int nextPlanet;
     private int level;
     private long score;
     private int[][] planets;
@@ -29,7 +29,7 @@ public class SerializableSessionState implements Serializable {
         int columns = session.getGameBoard().getColumns();
         int rows = session.getGameBoard().getRows();
 
-        this.currentPlanet = session.getCurrentPlanet().getOrder();
+        this.nextPlanet = session.getNextPlanet().getOrder();
         this.level = session.getLevel();
         this.score = session.getScore();
         this.activeColumn = activeCell.getColumn();
@@ -53,7 +53,7 @@ public class SerializableSessionState implements Serializable {
     public SerializableSessionState(){}
 
     /* Getters */
-    protected int getCurrentPlanet() { return currentPlanet; }
+    protected int getNextPlanet() { return nextPlanet; }
     protected int getLevel() { return level; }
     protected long getScore() { return score; }
     protected int[][] getPlanets() { return planets; }

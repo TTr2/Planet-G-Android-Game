@@ -5,6 +5,7 @@ import android.test.ServiceTestCase;
 import android.widget.ImageView;
 
 import com.example.tango.mobdev_assignment1.Game.GameBoard;
+import com.example.tango.mobdev_assignment1.Game.PlanetsEnum;
 
 import org.junit.Test;
 
@@ -40,15 +41,15 @@ public class gameboardUnitTest {
         float velocity = 5;
 
         // implement
-        gameboard.addToGameBoard(activeBlockImage);
+        gameboard.addToGameBoard(activeBlockImage, PlanetsEnum.EARTH);
         assertEquals(gameboard.getActiveCell().getRow(), startingRow);
-        assertEquals(gameboard.getActiveImage().getY(), gameboard.getActiveCell().getCellY());
-        gameboard.moveBlockY(velocity);
+        assertEquals(gameboard.getActiveCell().getColumn(), startingColumn);
+        gameboard.moveBlockY(gameboard.getActiveCell(), velocity);
 
         // assert
 
         assertEquals(gameboard.getActiveCell().getRow(), startingRow -1);
-        assertEquals(gameboard.getActiveImage().getY(), gameboard.getActiveCell().getCellY() + velocity);
+        assertEquals(gameboard.getActiveCell().getCellY(), velocity);
     }
 
     /**

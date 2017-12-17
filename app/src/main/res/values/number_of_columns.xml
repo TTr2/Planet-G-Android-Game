@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="num_of_columns">
+        <item name="columns_three">3</item>
+        <item name="columns_five">5</item>
+        <item name="columns_seven">7</item>
+        <item name="columns_nine">9</item>
+        <item name="columns_eleven">11</item>
+        <item name="columns_thirteen">13</item>
+        <item name="columns_fifteen">15</item>
+    </string-array>
+    <string-array name="value_of_columns">
+        <item>3</item>
+        <item>5</item>
+        <item>7</item>
+        <item>9</item>
+        <item>11</item>
+        <item>13</item>
+        <item>15</item>
+    </string-array>
+</resources>

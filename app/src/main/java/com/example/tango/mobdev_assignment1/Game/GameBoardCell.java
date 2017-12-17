@@ -1,17 +1,25 @@
 package com.example.tango.mobdev_assignment1.Game;
 
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Color;
+import android.util.AttributeSet;
 import android.util.Log;
+import android.view.View;
 import android.widget.ImageView;
 
 import java.io.Serializable;
 
 /**
- * Represents a cell within the game board with predefined coordinates, contains a planet ImageView
- * that can be a NullImageView.
+ * Represents a cell within the game board with predefined coordinates, as it extends ImageView it
+ * contains manages the x, y and bitmap values of the image but also stores values position and
+ * bitmap values for the cell that it represents, which can be modified on a separate thread
+ * (ImageView values can only be edited on the main GUI thread)..
  * Created by tango on 21/11/2017.
  */
-public class GameBoardCell implements Serializable {
+public class GameBoardCell extends android.support.v7.widget.AppCompatImageView {
 
     private final int size;
     private final int column;
@@ -21,49 +29,41 @@ public class GameBoardCell implements Serializable {
     private final int pointsPerBlock;
     private float imageX;
     private float imageY;
+    private Bitmap cellBitmap;
     private GameBoardCell cellUp;
     private GameBoardCell cellLeft;
     private GameBoardCell cellDown;
     private GameBoardCell cellRight;
     private PlanetsEnum planet;
-    private transient ImageView imageView;
     private boolean occupied;
     private boolean destroyed;
     private boolean visited;
 
-    /**
-     * Constructor for a game board cell.
-     *
-     * @param column    the column on the game board.
-     * @param row       the row on the game board.
-     * @param size      the width and height of this cell.
-     * @param x         the cellX coordinate of this cell.
-     * @param y         the cellY coordinate of this cell.
-     * @param imageView the ImageView in this cell.
-     * @param planet    the planet occupying this cell.
-     */
-    public GameBoardCell(int column, int row, int size, int x, int y, ImageView imageView, PlanetsEnum planet)
-    {
-        this.column = column;
-        this.row = row;
-        this.size = size;
-        this.cellX = x;
-        this.cellY = y;
-        this.imageView = imageView;
-        this.planet = planet;
-        this.imageX = x;
-        this.imageY = y;
+    public GameBoardCell(Context context) {
+        super(context);
+        this.setWillNotDraw(false);
+        this.size = 150;
+        this.column = 0;
+        this.row = 0;
+        this.cellY = 0;
+        this.cellX = 0;
         this.pointsPerBlock = 10;
-        this.occupied = false;
-        this.destroyed = false;
-        this.visited = false;
     }
 
-    /**
-     * Default constructor for serializing.
-     */
-    public GameBoardCell()
-    {
+    public GameBoardCell(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        this.setWillNotDraw(false);
+        this.size = 150;
+        this.column = 0;
+        this.row = 0;
+        this.cellY = 0;
+        this.cellX = 0;
+        this.pointsPerBlock = 10;
+    }
+
+    public GameBoardCell(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+        this.setWillNotDraw(false);
         this.size = 150;
         this.column = 0;
         this.row = 0;
@@ -73,16 +73,48 @@ public class GameBoardCell implements Serializable {
     }
 
     /**
-     * Draw method to access the cell's imageView drawable
+     * Constructor for a game board cell.
      *
-     * @param canvas the GameSurfaceView's canvas.
+     * @param column    the column on the game board.
+     * @param row       the row on the game board.
+     * @param size      the width and height of this cell.
+     * @param x         the cellX coordinate of this cell.
+     * @param y         the cellY coordinate of this cell.
+     * @param bmp       the Bitmap to set in this cell.
+     * @param planet    the planet occupying this cell.
      */
-    public void draw(Canvas canvas)
+    public GameBoardCell(Context context, int column, int row, int size, int x, int y, Bitmap bmp, PlanetsEnum planet)
     {
-        if (this.isOccupied())
-        {
-            this.imageView.getDrawable().draw(canvas);
-        }
+        super(context);
+        this.setBackgroundColor(Color.TRANSPARENT);
+        this.column = column;
+        this.row = row;
+        this.size = size;
+        this.cellX = x;
+        this.cellY = y;
+        this.cellBitmap = bmp;
+        this.planet = planet;
+        this.imageX = x;
+        this.imageY = y;
+        this.pointsPerBlock = 10;
+        this.occupied = false;
+        this.destroyed = false;
+        this.visited = false;
+    }
+
+
+    @Override
+    public void onDraw(Canvas canvas)
+    {
+        super.onDraw(canvas);
+        canvas.drawBitmap(cellBitmap, this.imageX, this.imageY, null);
+        Log.d("GameBoardCell", "DRAW! " + this.toString());
+    }
+
+    @Override
+    public String toString()
+    {
+        return "CELL: column=" + this.column + ", row=" + this.row +", planet=" + this.planet + ", image x,y= " + this.imageX + "," + this.imageY + "super x,y" + this.getX() + "," + this.getY() + ", occupied=" + this.occupied + ", destroyed= " + this.destroyed + ", visited=" +this.visited;
     }
 
     /**
@@ -135,15 +167,10 @@ public class GameBoardCell implements Serializable {
     }
 
     /**
-     * Sets the ImageView in this cell.
-     * @param imageView the ImageView to put in this cell.
+     * Sets the Bitmap in this cell.
+     * @param bmp the Bitmap to put in this cell.
      */
-    protected void setImageView(ImageView imageView)
-    {
-        this.imageView = imageView;
-        this.imageView.setMaxWidth(this.size);
-        this.imageView.setMaxHeight(this.size);
-    }
+    protected void setCellBitmap(Bitmap bmp) { this.cellBitmap = bmp; }
 
     /**
      * Sets the image X coordinate.
@@ -191,12 +218,6 @@ public class GameBoardCell implements Serializable {
     {
         return occupied;
     }
-
-    /**
-     * Gets the ImageView in this cell.
-     * @return the ImageView in this cell.
-     */
-    protected ImageView getImageView() { return imageView; }
 
     /**
      * Gets the size (width and height) of this cell.
@@ -275,6 +296,8 @@ public class GameBoardCell implements Serializable {
 
     //TODO: comment the cell getters and setters
 
+    public Bitmap getCellBitmap() { return this.cellBitmap; }
+
     protected int getPointsPerBlock() { return pointsPerBlock; }
 
 
@@ -319,5 +342,6 @@ public class GameBoardCell implements Serializable {
         return this.destroyed;
     }
 
-    public boolean isVisited() { return visited; }
+    public boolean isVisited() { return this.visited; }
+
 }

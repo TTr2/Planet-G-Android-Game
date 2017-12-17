@@ -7,18 +7,205 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context="com.example.tango.mobdev_assignment1.Activities.PlanetStatsActivity$PlaceholderFragment">
+    tools:context="com.example.tango.mobdev_assignment1.Activities.PlanetStatsActivity$PlanetaryStatisticFragment">
 
-    <ImageView
-        android:id="@+id/imageView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:scaleType="centerCrop"
-        app:srcCompat="@drawable/galaxy4" />
+    <GridLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:columnCount="2"
+        android:rowCount="7"
+        android:gravity="center"
+        android:numColumns="2"
+        android:stretchMode="columnWidth">
 
-    <TextView
-        android:id="@+id/section_label"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+        <TextView
+            android:id="@+id/planetTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_column="0"
+            android:layout_columnSpan="2"
+            android:layout_row="0"
+            android:fontFamily="sans-serif-smallcaps"
+            android:text="Planet Title"
+            android:textAlignment="center"
+            android:textColor="@android:color/holo_orange_dark"
+            android:textSize="30sp"
+            android:textStyle="bold" />
+
+        <ImageView
+            android:id="@+id/planetImageView"
+            android:layout_width="300dp"
+            android:layout_height="300dp"
+            android:layout_column="0"
+            android:layout_columnSpan="2"
+            android:layout_gravity="center"
+            android:layout_row="1"
+            android:scaleType="fitCenter"
+            app:srcCompat="@drawable/null_image" />
+
+        <TextView
+            android:id="@+id/PlanetSizeText"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:layout_column="1"
+            android:layout_columnSpan="1"
+            android:layout_row="2"
+            android:fontFamily="sans-serif-smallcaps"
+            android:text=""
+            android:textAlignment="center"
+            android:textColor="@color/colorAccent"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:paddingLeft="10dp"/>
+
+        <TextView
+            android:id="@+id/PlanetSizeLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_row="2"
+            android:layout_column="0"
+            android:layout_columnSpan="1"
+            android:fontFamily="sans-serif-smallcaps"
+            android:labelFor="@id/PlanetSizeText"
+            android:text="Diameter"
+            android:textAlignment="viewEnd"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"/>
+
+        <TextView
+            android:id="@+id/PlanetMassText"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:layout_column="1"
+            android:layout_columnSpan="1"
+            android:layout_row="3"
+            android:fontFamily="sans-serif-smallcaps"
+            android:text=""
+            android:textAlignment="center"
+            android:textColor="@color/colorAccent"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:paddingLeft="10dp"/>
+
+        <TextView
+            android:id="@+id/PlanetMassLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_row="3"
+            android:layout_column="0"
+            android:layout_columnSpan="1"
+            android:fontFamily="sans-serif-smallcaps"
+            android:labelFor="@id/PlanetMassText"
+            android:text="Mass"
+            android:textAlignment="viewEnd"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"/>
+
+        <TextView
+            android:id="@+id/PlanetGravityText"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:layout_column="1"
+            android:layout_columnSpan="1"
+            android:layout_row="4"
+            android:fontFamily="sans-serif-smallcaps"
+            android:text=""
+            android:textAlignment="center"
+            android:textColor="@color/colorAccent"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:paddingLeft="10dp"/>
+
+        <TextView
+            android:id="@+id/PlanetGravityLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_row="4"
+            android:layout_column="0"
+            android:layout_columnSpan="1"
+            android:fontFamily="sans-serif-smallcaps"
+            android:labelFor="@id/PlanetMassText"
+            android:text="Gravity"
+            android:textAlignment="viewEnd"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"/>
+
+        <TextView
+            android:id="@+id/DistanceFromSunText"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:layout_column="1"
+            android:layout_columnSpan="1"
+            android:layout_row="5"
+            android:fontFamily="sans-serif-smallcaps"
+            android:text=""
+            android:textAlignment="center"
+            android:textColor="@color/colorAccent"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:paddingLeft="10dp"/>
+
+        <TextView
+            android:id="@+id/DistanceFromSunLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_row="5"
+            android:layout_column="0"
+            android:layout_columnSpan="1"
+            android:fontFamily="sans-serif-smallcaps"
+            android:labelFor="@id/DistanceFromSunText"
+            android:text="From Sun"
+            android:textAlignment="viewEnd"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"/>
+
+        <TextView
+            android:id="@+id/OrbitText"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:layout_column="1"
+            android:layout_columnSpan="1"
+            android:layout_row="6"
+            android:fontFamily="sans-serif-smallcaps"
+            android:text=""
+            android:textAlignment="center"
+            android:textColor="@color/colorAccent"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:paddingLeft="10dp"/>
+
+        <TextView
+            android:id="@+id/OrbitLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_row="6"
+            android:layout_column="0"
+            android:layout_columnSpan="1"
+            android:fontFamily="sans-serif-smallcaps"
+            android:labelFor="@id/OrbitText"
+            android:text="Orbit"
+            android:textAlignment="viewEnd"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"/>
+    </GridLayout>
 
 </RelativeLayout>
+
+<!--
+
+   private int order;
+    private int smallDrawableId;
+    private float mass;
+    private float gravity;
+    private long diameter;
+    private String distanceFromSun;
+    private long distanceFromEarth;
+
+-->

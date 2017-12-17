@@ -12,19 +12,17 @@ import java.io.Serializable;
 public class GameSession implements Serializable {
 
     private GameBoard gameBoard;
-    private PlanetsEnum currentPlanet;
+    private PlanetsEnum nextPlanet;
     private int level;
     private long score;
 
     /**
      * Constructor for a com.example.tango.mobdev_assignment1.Game.GameSession, that stores the details for a single play session.
      * @param gameBoard the game board.
-     * @param startingPlanet the starting planet.
      */
-    public GameSession(GameBoard gameBoard, PlanetsEnum startingPlanet)
+    public GameSession(GameBoard gameBoard)
     {
         this.gameBoard = gameBoard;
-        this.currentPlanet = startingPlanet;
         this.level = 1;
         this.score = 0;
     }
@@ -51,23 +49,17 @@ public class GameSession implements Serializable {
     protected void setLevel(int level) { this.level = level; }
 
     /**
-     * Sets the session's game board when pausing and resuming.
-     * @param gameBoard the game session's game board.
+     * Gets the next planet to fall.
+     * @return the next planet enum.
      */
-    public void setGameBoard(GameBoard gameBoard) { this.gameBoard = gameBoard; }
+    protected PlanetsEnum getNextPlanet() { return this.nextPlanet; }
 
     /**
-     * Gets the current planet that new blocks compare their gravity to.
-     * @return the current planet enum.
+     * Sets the next planet to fall.
+     * @param nextPlanet the new next planet.
      */
-    protected PlanetsEnum getCurrentPlanet() { return this.currentPlanet; }
-
-    /**
-     * Sets the current planet that new blocks compare their gravity to.
-     * @param currentPlanet the new current planet.
-     */
-    protected void setCurrentPlanet(PlanetsEnum currentPlanet) {
-        this.currentPlanet = currentPlanet;
+    protected void setNextPlanet(PlanetsEnum nextPlanet) {
+        this.nextPlanet = nextPlanet;
     }
 
     /**

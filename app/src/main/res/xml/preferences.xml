@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <PreferenceCategory
+        android:title="Game Play"
+        android:key="pref_game_play_key">
+        <ListPreference
+            android:key="num_columns"
+            android:dialogTitle="Select Number of Columns"
+            android:title="Number of Columns"
+            android:summary="Select the number of columns on the game board."
+            android:entries="@array/num_of_columns"
+            android:entryValues="@array/value_of_columns"
+            android:defaultValue="7"/>
+        <SwitchPreference
+            android:key="vibrate_on"
+            android:title="Vibrate"
+            android:defaultValue="true"/>
+    </PreferenceCategory>
+    <PreferenceCategory
+        android:title="Sounds"
+        android:key="pref_sounds_key">
+        <SwitchPreference
+            android:key="bgnd_music_on"
+            android:title="Background Music"
+            android:summary="Play background music or not."
+            android:defaultValue="true"/>
+        <SwitchPreference
+            android:key="sound_fx_on"
+            android:title="Sound FX"
+            android:summary="Play sound effects or not."
+            android:defaultValue="true"/>
+    </PreferenceCategory>
+    <PreferenceCategory
+        android:title="About"
+        android:key="pref_game_play_key">
+        <Preference
+            android:key="pref_static_field_key"
+            android:selectable="false"
+            android:summary="Planet-G by Tim Tyler, \u00A9 2017\nMusic by Ben Sound from www.bensound.com\nIcon by Gregor Cresnar from www.flaticon.com "/>
+    </PreferenceCategory>
+
+</PreferenceScreen>

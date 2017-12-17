@@ -1,7 +1,11 @@
 package com.example.tango.mobdev_assignment1.Activities;
 
+import android.app.Fragment;
+import android.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+
+import com.example.tango.mobdev_assignment1.Fragments.RulesSplashDialogFragment;
 import com.example.tango.mobdev_assignment1.Game.GameController;
 import com.example.tango.mobdev_assignment1.Game.GameViewModel;
 import com.example.tango.mobdev_assignment1.R;
@@ -10,7 +14,6 @@ public class GameActivity extends AppCompatActivity {
 
     private GameController gameController;
     private GameViewModel viewModel;
-    private boolean isPaused;
 
     /**
      * Overrides the activity onCreate method to initialise view objects.
@@ -21,7 +24,6 @@ public class GameActivity extends AppCompatActivity {
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_game);
-        this.isPaused = false;
         this.viewModel = new GameViewModel(this);
     }
 
@@ -44,23 +46,8 @@ public class GameActivity extends AppCompatActivity {
     protected void onPause()
     {
         super.onPause();
-
-        this.isPaused = true;
         this.gameController.pauseGameLoop();
+        this.finish();
     }
 
-    /**
-     * Called when the activity is resumed after being paused.
-     */
-    @Override
-    protected void onResume()
-    {
-        super.onResume();
-        if (this.isPaused)
-        {
-            this.isPaused = false;
-            this.gameController.resumeGameLoop();
-        }
-        //TODO: load session from xml and start game again.
-    }
 }
